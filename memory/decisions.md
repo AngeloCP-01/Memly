@@ -30,3 +30,6 @@
 | D026 | Three MemoryCard variants in shared `ui/components/` package | Timeline, carousel, and search cards have distinct layouts; shared file avoids duplication |
 | D027 | Time Hop query uses SQLite strftime for month-day matching | Cross-year date matching without loading all memories into memory |
 | D028 | Date grouping computed in ViewModel via Kotlin groupBy | Avoids re-computation on recomposition; clean separation from UI |
+| D029 | Edit fields stored in UiState alongside read fields | Allows cancel without re-fetching; edit* prefix distinguishes from display values |
+| D030 | Tag updates as individual add/remove (not transactional) | Acceptable for local-only app; can wrap in transaction later if needed |
+| D031 | SavedStateHandle for memoryId in detail ViewModel | Standard Hilt pattern for navigation arguments; survives process death |

@@ -84,3 +84,13 @@
 - `MemorySearchResultCard` — horizontal row card for search/collection screens
 - All cards accept `Modifier` parameter and use `remember` for date formatters
 - Press animation via `pointerInput` + `detectTapGestures` + `animateFloatAsState(0.97f)`
+
+## Detail Screen
+
+- `MemoryDetailViewModel` loads via `SavedStateHandle["memoryId"]`
+- `DetailUiState` contains both read and edit fields (edit prefixed with `edit*`)
+- Edit mode: `startEditing()` copies current values to edit fields; `cancelEditing()` discards
+- Tag changes computed as diff: remove old tags not in new set, add new tags not in old set
+- Delete uses Room FK cascade (no manual cleanup of media/tags needed)
+- Photo hero uses `HorizontalPager` with page indicator dots
+- Back button overlaid as semi-transparent circle on image

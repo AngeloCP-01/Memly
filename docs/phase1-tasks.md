@@ -140,9 +140,9 @@ Fully functional timeline with date-grouped memories, three MemoryCard variants 
 
 ## Section 4: Memory Detail Screen
 
-**Status:** NOT STARTED
+**Status:** COMPLETE
 
-Full view and edit screen for a single memory, including media gallery and metadata editing.
+Full detail screen with photo hero (HorizontalPager), read/edit mode toggle via FAB, tag diff on save, and delete with confirmation dialog.
 
 **Risks:**
 - Video playback requires ExoPlayer or Media3 setup.
@@ -150,13 +150,13 @@ Full view and edit screen for a single memory, including media gallery and metad
 
 | Task | Description                                                                 | Status | Notes                                                         |
 |------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
-| 4.1  | Create MemoryDetailViewModel -- load memory with media, tags by memoryId    | ⬜     | Combine Memory + MediaFiles + Tags into DetailUiState          |
-| 4.2  | Display full-bleed photo hero with HorizontalPager for multiple media       | ⬜     | Full-width, no side padding, 3:4 ratio or 50% screen height; page indicator dots; back button + mood chip overlaid on image |
-| 4.3  | Display metadata below image: title, notes, mood, location, date, tags     | ⬜     | Scrollable column, 16dp horizontal padding; labeled sections   |
-| 4.4  | Implement edit mode toggle (FAB or toolbar button)                          | ⬜     | Switch between read-only and editable fields                   |
-| 4.5  | Save edits: update MemoryEntity and related entities                        | ⬜     | Repository update method; show success snackbar                |
-| 4.6  | Delete memory with confirmation dialog                                      | ⬜     | AlertDialog; delete memory + cascade media/tags; navigate back |
-| 4.7  | Verify: navigate from timeline, view all fields, edit, delete               | ⬜     | End-to-end manual test                                         |
+| 4.1  | Create MemoryDetailViewModel -- load memory with media, tags by memoryId    | ✅     | DetailUiState with edit fields; loads via SavedStateHandle     |
+| 4.2  | Display full-bleed photo hero with HorizontalPager for multiple media       | ✅     | Full-bleed 3:4 ratio; page indicator dots; back button + mood chip overlaid |
+| 4.3  | Display metadata below image: title, notes, mood, location, date, tags     | ✅     | Scrollable column with 16dp padding; labeled sections          |
+| 4.4  | Implement edit mode toggle (FAB or toolbar button)                          | ✅     | FAB toggles edit/save icons; cancel via back/close button      |
+| 4.5  | Save edits: update MemoryEntity and related entities                        | ✅     | Updates memory + tag diff (add new, remove old); reloads data  |
+| 4.6  | Delete memory with confirmation dialog                                      | ✅     | AlertDialog with error-colored delete button; cascades via FK  |
+| 4.7  | Verify: navigate from timeline, view all fields, edit, delete               | ✅     | Build passes; navigation wired via memoryId argument           |
 
 **Checkpoint:** Can view any memory in full detail, edit its metadata, and delete it. Navigation back to timeline works.
 

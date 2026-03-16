@@ -4,6 +4,20 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Phase 1, Section 4: Memory Detail Screen
+**Date:** 2026-03-16
+
+### Added
+- MemoryDetailViewModel with DetailUiState, load by memoryId via SavedStateHandle
+- Full-bleed photo hero with HorizontalPager and page indicator dots
+- Read mode: title, date, mood chip, location, notes, tag chips
+- Edit mode: editable fields (title, notes, mood selector, place label, tags) with FAB toggle
+- Save edits with tag diff (add new tags, remove old tags)
+- Delete memory with AlertDialog confirmation and cascade deletion
+- Back/cancel button as semi-transparent circle overlaid on photo hero
+
+---
+
 ## Phase 1, Section 3: Timeline Screen
 **Date:** 2026-03-16
 

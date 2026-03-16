@@ -9,7 +9,7 @@ It contains everything Claude needs to work on the Memly project autonomously.
 
 **App:** Memly -- offline-first Android personal memory journal
 **Package:** `com.example.memly`
-**Current State:** Phase 1 in progress. Section 3 (Timeline Screen) complete. Next: Phase 1, Section 4.
+**Current State:** Phase 1 in progress. Section 4 (Memory Detail Screen) complete. Next: Phase 1, Section 5.
 **Scope:** 6 phases, ~300 tasks total. Free, no ads, no accounts, 100% offline (Phase 4 adds optional cloud sync).
 
 ## Tech Stack
