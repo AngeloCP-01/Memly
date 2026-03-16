@@ -71,6 +71,9 @@ dependencies {
     // Coil
     implementation(libs.coil.compose)
 
+    // Location
+    implementation(libs.play.services.location)
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -48,3 +48,22 @@
   - `@Relation` for direct child entities
   - `@Junction` for many-to-many relationships
   - DAO queries annotated with `@Transaction`
+
+## Capture Flow
+
+- CaptureViewModel extends `ViewModel` with `@ApplicationContext` injection for file I/O
+- Media items tracked as `MediaItem(uri, mediaType, displayName)` in UiState
+- File operations (hash, copy, thumbnail) run on `Dispatchers.IO` via `withContext`
+- Repository's `createMemoryWithDetails()` wraps inserts in `database.withTransaction {}`
+- Camera capture uses `TakePicture` contract + `FileProvider` (not CameraX)
+- Gallery uses `PickMultipleVisualMedia` contract
+- Location uses `FusedLocationProviderClient.getCurrentLocation()` with cancellation token
+- Duplicate media detected by SHA-256 hash before insert
+
+## File Management
+
+- Media files copied to `filesDir/media/` with UUID filenames
+- Thumbnails stored in `cacheDir/thumbnails/`
+- Camera temp photos stored in `cacheDir/camera/`
+- FileProvider paths defined in `res/xml/file_paths.xml`
+- Video thumbnails extracted via `MediaMetadataRetriever.getFrameAtTime()`

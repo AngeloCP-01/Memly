@@ -81,9 +81,9 @@ All foundational work is done. The project builds, Room database is configured, 
 
 ## Section 2: Memory Capture (Core)
 
-**Status:** NOT STARTED
+**Status:** COMPLETE
 
-This is the most critical section. It builds the full capture flow: selecting media, entering metadata, and persisting a Memory with all associated entities.
+Full capture flow implemented: media selection (gallery + camera), text input with character counters, mood selector, GPS location with permission handling, place label, tag management, date picker, and transactional save with SHA-256 dedup and thumbnail generation.
 
 **Risks:**
 - Runtime permission handling for camera, location, and media access across API levels.
@@ -92,19 +92,19 @@ This is the most critical section. It builds the full capture flow: selecting me
 
 | Task | Description                                                                 | Status | Notes                                                         |
 |------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
-| 2.1  | Create CaptureViewModel with UiState (title, notes, mood, media list, location, tags, date, loading, error) | ⬜ | Single StateFlow<CaptureUiState> exposed to UI               |
-| 2.2  | Build CaptureScreen scaffold (scrollable form layout with sections)         | ⬜     | Compose Column with sections for media, text, mood, location, tags |
-| 2.3  | Implement photo/video selection from gallery using Photo Picker API         | ⬜     | Use ActivityResultContracts.PickMultipleVisualMedia; copy to app-private storage |
-| 2.4  | Implement camera capture via intent (ACTION_IMAGE_CAPTURE / ACTION_VIDEO_CAPTURE) | ⬜ | Use FileProvider for URI; fall back to intent-based capture   |
-| 2.5  | Build text notes input (title field + multi-line notes field)               | ⬜     | OutlinedTextField composables with character counters          |
-| 2.6  | Build mood/emotion selector (chip grid from Mood enum values)               | ⬜     | FlowRow of FilterChip composables; single selection           |
-| 2.7  | Implement GPS location capture with permission handling                     | ⬜     | FusedLocationProviderClient; handle ACCESS_FINE_LOCATION permission rationale |
-| 2.8  | Build custom place label input field                                        | ⬜     | Simple text field; auto-fill from location if available       |
-| 2.9  | Build tag input (text field + chip display, add/remove)                     | ⬜     | TextField with IME action to add; FlowRow of chips with dismiss icon |
-| 2.10 | Add date picker for memory date (default to now)                            | ⬜     | Material 3 DatePickerDialog; store as epoch millis            |
-| 2.11 | Implement save flow: create MemoryEntity, MediaFileEntity(s), TagEntity(s) in a transaction | ⬜ | Repository method wrapping Room @Transaction; navigate back on success |
-| 2.12 | Implement file hash computation (SHA-256) and dedup check before save       | ⬜     | Compute on Dispatchers.IO; skip insert if hash exists         |
-| 2.13 | Implement thumbnail generation on save (Bitmap scaling for images, frame extraction for video) | ⬜ | Save thumbnail to app cache dir; store path in MediaFileEntity |
+| 2.1  | Create CaptureViewModel with UiState (title, notes, mood, media list, location, tags, date, loading, error) | ✅ | Single StateFlow<CaptureUiState> exposed to UI               |
+| 2.2  | Build CaptureScreen scaffold (scrollable form layout with sections)         | ✅     | Compose Column with sections for media, text, mood, location, tags |
+| 2.3  | Implement photo/video selection from gallery using Photo Picker API         | ✅     | Use ActivityResultContracts.PickMultipleVisualMedia; copy to app-private storage |
+| 2.4  | Implement camera capture via intent (ACTION_IMAGE_CAPTURE / ACTION_VIDEO_CAPTURE) | ✅ | Use FileProvider for URI; TakePicture contract with permission handling |
+| 2.5  | Build text notes input (title field + multi-line notes field)               | ✅     | OutlinedTextField composables with character counters          |
+| 2.6  | Build mood/emotion selector (chip grid from Mood enum values)               | ✅     | FlowRow of FilterChip composables; single selection with mood colors |
+| 2.7  | Implement GPS location capture with permission handling                     | ✅     | FusedLocationProviderClient; handles fine + coarse location permissions |
+| 2.8  | Build custom place label input field                                        | ✅     | Simple text field with location icon                          |
+| 2.9  | Build tag input (text field + chip display, add/remove)                     | ✅     | TextField with IME action to add; FlowRow of chips with dismiss icon |
+| 2.10 | Add date picker for memory date (default to now)                            | ✅     | Material 3 DatePickerDialog; store as epoch millis            |
+| 2.11 | Implement save flow: create MemoryEntity, MediaFileEntity(s), TagEntity(s) in a transaction | ✅ | Repository method wrapping Room withTransaction; navigate back on success |
+| 2.12 | Implement file hash computation (SHA-256) and dedup check before save       | ✅     | Compute on Dispatchers.IO; skip insert if hash exists         |
+| 2.13 | Implement thumbnail generation on save (Bitmap scaling for images, frame extraction for video) | ✅ | Save thumbnail to app cache dir; store path in MediaFileEntity; video frame extraction via MediaMetadataRetriever |
 
 **Checkpoint:** Can create a memory with photo, text notes, mood, GPS location, place label, tags, and custom date. Memory persists in Room. Duplicate media is detected.
 

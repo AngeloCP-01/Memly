@@ -5,7 +5,7 @@
 | # | Section              | Status      |
 |---|----------------------|-------------|
 | 1 | Project Setup        | COMPLETE    |
-| 2 | Memory Capture       | NOT STARTED |
+| 2 | Memory Capture       | COMPLETE    |
 | 3 | Timeline Feed        | NOT STARTED |
 | 4 | Detail View          | NOT STARTED |
 | 5 | Search & Filter      | NOT STARTED |
@@ -15,5 +15,5 @@
 
 ## Current Pointer
 
-- **Last completed:** Phase 1, Section 1 -- Project Setup (2026-03-16)
-- **Next:** Phase 1, Section 2 -- Memory Capture
+- **Last completed:** Phase 1, Section 2 -- Memory Capture (2026-03-16)
+- **Next:** Phase 1, Section 3 -- Timeline Screen

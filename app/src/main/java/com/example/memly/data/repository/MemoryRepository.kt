@@ -1,5 +1,7 @@
 package com.example.memly.data.repository
 
+import androidx.room.withTransaction
+import com.example.memly.data.local.MemlyDatabase
 import com.example.memly.data.local.dao.MemoryDao
 import com.example.memly.data.local.dao.TagDao
 import com.example.memly.data.local.entity.MediaFileEntity
@@ -14,6 +16,7 @@ import javax.inject.Singleton
 
 @Singleton
 class MemoryRepository @Inject constructor(
+    private val database: MemlyDatabase,
     private val memoryDao: MemoryDao,
     private val tagDao: TagDao
 ) {
@@ -69,4 +72,24 @@ class MemoryRepository @Inject constructor(
     }
 
     fun getAllTags(): Flow<List<TagEntity>> = tagDao.getAllTags()
+
+    suspend fun createMemoryWithDetails(
+        memory: MemoryEntity,
+        mediaFiles: List<MediaFileEntity>,
+        tagNames: List<String>
+    ): Long = database.withTransaction {
+        val memoryId = memoryDao.insertMemory(memory)
+
+        for (mediaFile in mediaFiles) {
+            memoryDao.insertMediaFile(mediaFile.copy(memoryId = memoryId))
+        }
+
+        for (tagName in tagNames) {
+            val existingTag = tagDao.getTagByName(tagName)
+            val tagId = existingTag?.id ?: tagDao.insertTag(TagEntity(name = tagName))
+            memoryDao.insertMemoryTagCrossRef(MemoryTagCrossRef(memoryId, tagId))
+        }
+
+        memoryId
+    }
 }

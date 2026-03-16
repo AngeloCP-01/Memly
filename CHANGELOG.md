@@ -4,6 +4,31 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Phase 1, Section 2: Memory Capture (Core)
+**Date:** 2026-03-16
+
+### Added
+- CaptureViewModel with CaptureUiState (title, notes, mood, media, location, tags, date, loading/error states)
+- Full CaptureScreen form: scrollable layout with media, text, mood, location, tags, date sections
+- Photo/video selection via Photo Picker API (PickMultipleVisualMedia)
+- Camera capture via TakePicture contract with FileProvider and permission handling
+- Mood/emotion selector using FilterChip grid with mood-colored backgrounds
+- GPS location capture via FusedLocationProviderClient with fine/coarse permission flow
+- Place label text input field
+- Tag input with FlowRow chip display and add/remove support
+- Date picker using Material 3 DatePickerDialog
+- Transactional save flow (MemoryEntity + MediaFileEntity + TagEntity in Room transaction)
+- SHA-256 file hash computation with duplicate media detection
+- Video thumbnail generation via MediaMetadataRetriever frame extraction
+- FileProvider configuration (file_paths.xml) for camera capture URIs
+- play-services-location dependency for GPS
+
+### Changed
+- MemoryRepository: added createMemoryWithDetails() transactional method, injected MemlyDatabase
+- ThumbnailUtil: refactored to support both image and video thumbnails via MediaType parameter
+
+---
+
 ## Phase 1, Section 1: Project Setup & Configuration
 **Date:** 2026-03-16
 

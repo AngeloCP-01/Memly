@@ -21,3 +21,8 @@
 | D017 | Three card variants: timeline (image+overlay), carousel (compact), search (horizontal row) | Different contexts need different density/detail levels |
 | D018 | Full-bleed photo hero in detail screen | Immersive; image fills top half, metadata scrolls below |
 | D019 | No dynamic color (Material You) — custom Memly palette always used | Memly has its own brand identity; dynamic color would dilute it |
+| D020 | CaptureViewModel uses @ApplicationContext Context injection | Needs context for file I/O (copy media, generate thumbnails, compute hashes); avoids AndroidViewModel |
+| D021 | TakePicture contract instead of CameraX for camera capture | Simpler; avoids CameraX build complexity; sufficient for capture-only use case |
+| D022 | play-services-location 21.3.0 for GPS | FusedLocationProviderClient provides best location with minimal setup |
+| D023 | Media files stored in filesDir/media with UUID names | App-private; no MediaStore dependency; survives cache clearing |
+| D024 | Dedup check skips insert silently when hash exists | Non-disruptive UX; user doesn't need to know about duplicates |

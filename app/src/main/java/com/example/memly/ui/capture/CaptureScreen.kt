@@ -1,25 +1,480 @@
 package com.example.memly.ui.capture
 
+import android.Manifest
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
+import com.example.memly.data.local.entity.MediaType
+import com.example.memly.data.local.entity.Mood
+import com.example.memly.ui.theme.color
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun CaptureScreen(
-    onMemorySaved: () -> Unit
+    onMemorySaved: () -> Unit,
+    viewModel: CaptureViewModel = hiltViewModel()
 ) {
-    // Placeholder — full capture form will be built out
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Capture Memory",
-            style = MaterialTheme.typography.headlineSmall
-        )
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
+
+    // Navigate back when saved
+    LaunchedEffect(state.isSaved) {
+        if (state.isSaved) onMemorySaved()
     }
+
+    // Show error in snackbar
+    LaunchedEffect(state.error) {
+        state.error?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
+
+    // Photo picker launcher
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia()
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            // Determine type per URI; default to PHOTO
+            val items = uris.map { uri ->
+                val mimeType = context.contentResolver.getType(uri) ?: ""
+                val type = if (mimeType.startsWith("video")) MediaType.VIDEO else MediaType.PHOTO
+                type to uri
+            }
+            items.forEach { (type, uri) -> viewModel.addMedia(uri, type) }
+        }
+    }
+
+    // Camera photo URI
+    var cameraPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && cameraPhotoUri != null) {
+            viewModel.addMedia(cameraPhotoUri!!, MediaType.PHOTO)
+        }
+    }
+
+    // Camera permission
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            val cacheDir = File(context.cacheDir, "camera")
+            if (!cacheDir.exists()) cacheDir.mkdirs()
+            val file = File(cacheDir, "photo_${System.currentTimeMillis()}.jpg")
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                context, "${context.packageName}.fileprovider", file
+            )
+            cameraPhotoUri = uri
+            cameraLauncher.launch(uri)
+        } else {
+            Toast.makeText(context, "Camera permission is required", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Location permission
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (fineGranted || coarseGranted) {
+            fetchLocation(context, viewModel)
+        } else {
+            Toast.makeText(context, "Location permission is required", Toast.LENGTH_SHORT).show()
+            viewModel.setLocationLoading(false)
+        }
+    }
+
+    // Date picker state
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("New Memory") },
+                navigationIcon = {
+                    IconButton(onClick = onMemorySaved) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                // === MEDIA SECTION (Tasks 2.3, 2.4) ===
+                Text("Photos & Videos", style = MaterialTheme.typography.titleMedium)
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    itemsIndexed(state.mediaItems) { index, item ->
+                        Box(
+                            modifier = Modifier
+                                .size(100.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+                        ) {
+                            AsyncImage(
+                                model = item.uri,
+                                contentDescription = "Media",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                            IconButton(
+                                onClick = { viewModel.removeMedia(index) },
+                                modifier = Modifier.align(Alignment.TopEnd).size(24.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Remove",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                    item {
+                        // Gallery button
+                        MediaActionButton(
+                            icon = Icons.Default.PhotoLibrary,
+                            label = "Gallery",
+                            onClick = {
+                                photoPickerLauncher.launch(
+                                    androidx.activity.result.PickVisualMediaRequest(
+                                        ActivityResultContracts.PickVisualMedia.ImageAndVideo
+                                    )
+                                )
+                            }
+                        )
+                    }
+                    item {
+                        // Camera button
+                        MediaActionButton(
+                            icon = Icons.Default.CameraAlt,
+                            label = "Camera",
+                            onClick = {
+                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
+                        )
+                    }
+                }
+
+                // === TEXT INPUT (Task 2.5) ===
+                Text("Details", style = MaterialTheme.typography.titleMedium)
+                OutlinedTextField(
+                    value = state.title,
+                    onValueChange = viewModel::updateTitle,
+                    label = { Text("Title") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Next
+                    ),
+                    supportingText = { Text("${state.title.length}/100") }
+                )
+                OutlinedTextField(
+                    value = state.notes,
+                    onValueChange = viewModel::updateNotes,
+                    label = { Text("Notes") },
+                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences
+                    ),
+                    supportingText = { Text("${state.notes.length}/1000") }
+                )
+
+                // === MOOD SELECTOR (Task 2.6) ===
+                Text("How are you feeling?", style = MaterialTheme.typography.titleMedium)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Mood.entries.forEach { mood ->
+                        FilterChip(
+                            selected = state.mood == mood,
+                            onClick = { viewModel.selectMood(mood) },
+                            label = { Text(mood.label) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = mood.color().copy(alpha = 0.3f),
+                                selectedLabelColor = MaterialTheme.colorScheme.onSurface
+                            )
+                        )
+                    }
+                }
+
+                // === LOCATION (Tasks 2.7, 2.8) ===
+                Text("Location", style = MaterialTheme.typography.titleMedium)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AssistChip(
+                        onClick = {
+                            viewModel.setLocationLoading(true)
+                            locationPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
+                            )
+                        },
+                        label = {
+                            if (state.isLocationLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            } else if (state.latitude != null) {
+                                Text("📍 ${String.format("%.4f, %.4f", state.latitude, state.longitude)}")
+                            } else {
+                                Text("Get Location")
+                            }
+                        },
+                        leadingIcon = {
+                            if (!state.isLocationLoading && state.latitude == null) {
+                                Icon(Icons.Default.MyLocation, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize))
+                            }
+                        }
+                    )
+                    if (state.latitude != null) {
+                        IconButton(onClick = { viewModel.clearLocation() }, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear location")
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = state.placeLabel,
+                    onValueChange = viewModel::updatePlaceLabel,
+                    label = { Text("Place name (optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words,
+                        imeAction = ImeAction.Next
+                    )
+                )
+
+                // === TAGS (Task 2.9) ===
+                Text("Tags", style = MaterialTheme.typography.titleMedium)
+                if (state.tags.isNotEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        state.tags.forEach { tag ->
+                            AssistChip(
+                                onClick = { viewModel.removeTag(tag) },
+                                label = { Text(tag) },
+                                trailingIcon = {
+                                    Icon(Icons.Default.Close, contentDescription = "Remove tag", modifier = Modifier.size(16.dp))
+                                }
+                            )
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = state.tagInput,
+                    onValueChange = viewModel::updateTagInput,
+                    label = { Text("Add a tag") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { viewModel.addTag() }),
+                    trailingIcon = {
+                        if (state.tagInput.isNotBlank()) {
+                            IconButton(onClick = { viewModel.addTag() }) {
+                                Icon(Icons.Default.Add, contentDescription = "Add tag")
+                            }
+                        }
+                    }
+                )
+
+                // === DATE PICKER (Task 2.10) ===
+                Text("Date", style = MaterialTheme.typography.titleMedium)
+                AssistChip(
+                    onClick = { showDatePicker = true },
+                    label = { Text(dateFormat.format(Date(state.memoryDate))) },
+                    leadingIcon = {
+                        Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize))
+                    }
+                )
+
+                // === SAVE BUTTON ===
+                Button(
+                    onClick = { viewModel.saveMemory() },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    enabled = !state.isLoading,
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    if (state.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Saving...")
+                    } else {
+                        Text("Save Memory", style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+            }
+        }
+    }
+
+    // Date picker dialog
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = state.memoryDate)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { viewModel.updateMemoryDate(it) }
+                    showDatePicker = false
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+}
+
+@Composable
+private fun MediaActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .size(100.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(8.dp),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            icon,
+            contentDescription = label,
+            modifier = Modifier.size(32.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(label, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Suppress("MissingPermission")
+private fun fetchLocation(context: android.content.Context, viewModel: CaptureViewModel) {
+    val client = LocationServices.getFusedLocationProviderClient(context)
+    val cancellation = CancellationTokenSource()
+    client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cancellation.token)
+        .addOnSuccessListener { location ->
+            if (location != null) {
+                viewModel.updateLocation(location.latitude, location.longitude)
+            } else {
+                viewModel.setLocationLoading(false)
+                Toast.makeText(context, "Could not get location", Toast.LENGTH_SHORT).show()
+            }
+        }
+        .addOnFailureListener {
+            viewModel.setLocationLoading(false)
+            Toast.makeText(context, "Location error: ${it.message}", Toast.LENGTH_SHORT).show()
+        }
 }
