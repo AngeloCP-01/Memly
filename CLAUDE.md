@@ -199,7 +199,9 @@ After completing each section, launch a background code review agent:
 |------|---------|
 | `CHANGELOG.md` | Section completion summaries |
 | `docs/PRD.md` | Product requirements, data model, features |
-| `docs/Architecture.md` | System architecture, data flow, file management |
+| `docs/Architecture.md` | High-level architecture, layers, threading |
+| `docs/system-design.md` | Detailed system designs: ER diagram, capture flow, file management, navigation, state management, location, thumbnails |
+| `docs/ui-design-guide.md` | Colors, typography, spacing, component specs, UX patterns |
 | `docs/AppDescription.md` | Organized brainstorm reference |
 | `docs/phase1-tasks.md` | Phase 1: Foundation & MVP (73 tasks, 8 sections) |
 | `docs/phase2-tasks.md` | Phase 2: Enhanced Experience (49 tasks, 7 sections) |

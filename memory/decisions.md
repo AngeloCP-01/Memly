@@ -14,3 +14,10 @@
 | D010 | Enums (Mood, MediaType) stored as strings in Room | Readable in DB, survives ordinal changes |
 | D011 | String-based navigation routes (not type-safe) | Simpler setup; sufficient for current scale |
 | D012 | `android.disallowKotlinSourceSets=false` in gradle.properties | Required for KSP source set compatibility with AGP 9 |
+| D013 | Light-first theme: Soft Coral #FF6B6B + Warm Beige #FFF3E6 + Soft Teal #4BC0C8 | Warm nostalgic palette; light-first suits personal memory app |
+| D014 | Typography: Poppins (headings) + Inter (body), bundled as static TTF | Friendly, modern sans-serif; Google Fonts, free |
+| D015 | Image-dominant memory cards with gradient overlay text | Inspired by Ronas IT travel app; photo-first visual journal feel |
+| D016 | 3:4 portrait aspect ratio for memory card images | Matches phone photo aspect; gives images room to breathe |
+| D017 | Three card variants: timeline (image+overlay), carousel (compact), search (horizontal row) | Different contexts need different density/detail levels |
+| D018 | Full-bleed photo hero in detail screen | Immersive; image fills top half, metadata scrolls below |
+| D019 | No dynamic color (Material You) — custom Memly palette always used | Memly has its own brand identity; dynamic color would dilute it |

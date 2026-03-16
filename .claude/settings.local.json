@@ -8,7 +8,14 @@
       "mcp__serena__list_dir",
       "mcp__serena__read_file",
       "Bash(mkdir:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "WebFetch(domain:ronasit.com)",
+      "WebFetch(domain:dribbble.com)",
+      "WebSearch",
+      "mcp__serena__onboarding",
+      "mcp__serena__write_memory",
+      "Bash(tail:*)",
+      "Bash(git add:*)"
     ]
   }
 }

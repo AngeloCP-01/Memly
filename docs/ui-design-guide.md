@@ -116,22 +116,69 @@ All interactive elements must have a minimum touch target size of **48dp x 48dp*
 
 ---
 
+## UX Reference Patterns
+
+Inspired by Ronas IT's meditation and travel app designs. These patterns inform how Memly displays content.
+
+### Image-Dominant Cards
+Memory cards are **photo-first**. The image fills the card and text floats over a gradient overlay at the bottom. This makes the timeline feel like a visual journal, not a data list.
+
+### Gradient Overlay on Images
+A **dark gradient** (black, 0% opacity at top to 60% opacity at bottom) sits over the bottom third of the card image. This ensures title, date, and mood text is always readable regardless of the photo behind it.
+
+### Portrait Aspect Ratio
+Memory cards use a **3:4 portrait aspect ratio** for the image area. This matches how most phone photos are taken and gives images room to breathe.
+
+### Horizontal Carousels
+Secondary content ("On This Day" memories, highlights, recent collections) appears in **horizontal scroll carousels** above or below the main feed. Cards in carousels are smaller (width ~200dp, 4:5 ratio).
+
+### Generous Whitespace
+Screens should feel calm and breathable. Use 16dp+ gaps between cards, 24dp between sections. Never pack content tightly — this is a personal memory app, not a news feed.
+
+### Full-Bleed Detail Header
+The memory detail screen opens with the **photo filling the top half** of the screen (no side padding), with metadata flowing below it. If multiple photos exist, they are in a swipeable horizontal pager.
+
+### Stat Cards
+Small rounded cards showing a single metric (memory count, current streak, top mood). Used on analytics/dashboard screens. Clean, one number + one label per card.
+
+---
+
 ## Components
 
-### Memory Card
+### Memory Card (Timeline)
 
-The memory card is the primary content unit across the app.
+The memory card is the primary content unit. It is **image-dominant with overlay text**.
 
 - **Corner radius:** 16dp (Large)
-- **Elevation:** 2dp in light mode; elevated surface color (`#2A2A2A`) in dark mode
-- **Image area:** Thumbnail image displayed prominently when media exists. Aspect ratio should be 16:9 or square, depending on layout context.
-- **Content layout:**
-  - Title (Poppins SemiBold, Title size)
-  - Date (Inter Regular, Caption size, on-surface-variant color)
-  - Mood indicator: small colored dot or chip using the corresponding mood color
-  - Place label (Inter Regular, Caption size), shown when location data is available
-  - Tag chips: display a maximum of 3 visible chips; overflow is shown as a "+N more" label
-- **Interaction:** Tapping the card navigates to the memory detail screen.
+- **Elevation:** 0dp (flat) — relies on rounded corners and image fill for visual separation, not shadow
+- **Image area:** Fills the entire card. Aspect ratio **3:4 portrait**. Loaded via Coil AsyncImage with crossfade.
+- **Gradient overlay:** Linear gradient from transparent at top to black at 60% opacity at bottom, covering the lower third of the image.
+- **Content over gradient (bottom of card):**
+  - Title (Poppins SemiBold, 16sp, white) — left-aligned, bottom
+  - Date (Inter Regular, 12sp, white at 80% opacity) — below title
+  - Mood chip: small pill with mood color background + white label text, positioned top-right of card
+  - Place label (Inter Regular, 12sp, white at 80% opacity) — next to date, with a pin icon
+- **Tag chips:** Shown below the image area (outside the overlay), max 3 visible + "+N" overflow
+- **No-image fallback:** If no media, show a solid surface-variant background with mood color accent strip at top, title and notes displayed as plain text card
+- **Interaction:** Tap navigates to detail. Subtle scale-down to 0.97 on press.
+
+### Memory Card (Carousel Variant)
+
+Used in horizontal scroll sections ("On This Day", highlights).
+
+- **Width:** ~180dp fixed
+- **Aspect ratio:** 4:5 portrait
+- **Corner radius:** 12dp (Medium)
+- **Same gradient overlay pattern** but simplified: only title + date over gradient
+- **No tag chips** (too small)
+
+### Memory Card (Search Result Variant)
+
+Horizontal layout for search results and collection contents.
+
+- **Layout:** Row — small square thumbnail (80dp x 80dp, 12dp radius) on the left, text on the right
+- **Text:** Title, date, mood chip, place label
+- **No gradient overlay** (image is small, text is beside it)
 
 ### Mood Selector
 
@@ -171,6 +218,17 @@ Provides top-level navigation between the three main sections.
 - **Inactive tab:** On-surface-variant colored icon with label text
 - **Label display:** Labels can be hidden on inactive tabs for a cleaner appearance, configurable by user preference
 - **Elevation:** Surface-level background; no visible shadow
+
+### Memory Detail Header
+
+The detail screen opens with a full-bleed photo hero.
+
+- **Image:** Full-width, no horizontal padding. Aspect ratio 3:4 or fills ~50% of screen height.
+- **Multiple photos:** Horizontal pager (swipeable) with page indicator dots.
+- **Back button:** Semi-transparent circular button overlaid on top-left of image.
+- **Mood chip:** Overlaid on top-right of image (same style as timeline card).
+- **Below image:** Title, date, place label, notes, tags — all in a scrollable column with 16dp horizontal padding.
+- **Edit/Delete:** Toolbar icons or FAB for edit mode.
 
 ### Empty States
 

@@ -48,13 +48,13 @@ Section 8 is the final pass and depends on all prior sections.
 |---------|-------------------------------|-------|------------|---------|
 | 1       | Project Setup & Configuration | 8     | Low        | Low     |
 | 2       | Memory Capture (Core)         | 13    | High       | High    |
-| 3       | Timeline Screen               | 9     | Medium     | Medium  |
+| 3       | Timeline Screen               | 11    | Medium     | Medium  |
 | 4       | Memory Detail Screen          | 7     | Medium     | Medium  |
 | 5       | Map View                      | 9     | Medium     | Medium  |
 | 6       | Search & Organization         | 11    | Medium     | Medium  |
 | 7       | Settings & Profile            | 6     | Low        | Low     |
 | 8       | Integration & Polish          | 10    | Medium     | Medium  |
-|         | **Total**                     | **73**|            |         |
+|         | **Total**                     | **75**|            |         |
 
 ---
 
@@ -123,13 +123,15 @@ Transform the placeholder timeline into a fully functional chronological feed of
 | Task | Description                                                                 | Status | Notes                                                         |
 |------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
 | 3.1  | Enhance TimelineViewModel to expose StateFlow<TimelineUiState> with grouped memories | ⬜ | UiState contains list of TimelineGroup (header + memories)    |
-| 3.2  | Build MemoryCard composable (thumbnail, title, date, mood icon, place, tag chips) | ⬜ | Reusable component; Card with Row layout                      |
-| 3.3  | Load and display thumbnails in MemoryCard using Coil AsyncImage             | ⬜     | Placeholder and error drawables; crossfade transition          |
+| 3.2  | Build MemoryCard composable — image-dominant with gradient overlay (see ui-design-guide.md) | ⬜ | 3:4 portrait aspect ratio; dark gradient overlay bottom third; title + date + mood chip over gradient; tag chips below image |
+| 3.2a | Build MemoryCard no-image fallback variant (surface background + mood accent strip) | ⬜ | For memories without media |
+| 3.2b | Build MemoryCard search result variant (horizontal: square thumbnail + text) | ⬜ | 80dp thumbnail, used in search and collection screens |
+| 3.3  | Load and display thumbnails in MemoryCard using Coil AsyncImage             | ⬜     | Crossfade transition; placeholder shimmer                      |
 | 3.4  | Implement day/week/month clustering with sticky section headers             | ⬜     | Group by date in ViewModel; LazyColumn stickyHeader            |
 | 3.5  | Add pull-to-refresh using Material 3 PullToRefresh                          | ⬜     | Triggers re-query from repository                              |
 | 3.6  | Build empty state composable (illustration + message + CTA to capture)      | ⬜     | Shown when memory list is empty                                |
 | 3.7  | Navigate to memory detail on card tap (pass memoryId)                       | ⬜     | NavController.navigate with memoryId argument                  |
-| 3.8  | Implement "Time Hop" banner for memories from this day in previous years    | ⬜     | Query by dayOfYear across years; show as highlighted card at top |
+| 3.8  | Implement "Time Hop" horizontal carousel for memories from this day in previous years | ⬜ | Carousel variant cards (180dp wide, 4:5 ratio); "X years ago" label; shown at top of timeline |
 | 3.9  | Verify: timeline displays memories with clustering, thumbnails, and navigation | ⬜  | Manual test with multiple memories across different dates      |
 
 **Checkpoint:** Timeline shows all memories grouped by date. Thumbnails load. Tapping a card navigates to detail. Time Hop surfaces old memories.
@@ -149,8 +151,8 @@ Full view and edit screen for a single memory, including media gallery and metad
 | Task | Description                                                                 | Status | Notes                                                         |
 |------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
 | 4.1  | Create MemoryDetailViewModel -- load memory with media, tags by memoryId    | ⬜     | Combine Memory + MediaFiles + Tags into DetailUiState          |
-| 4.2  | Display media gallery (swipeable HorizontalPager for multiple photos/videos) | ⬜    | Coil for images; placeholder for video frames                  |
-| 4.3  | Display all metadata: title, notes, mood, location, date, tags              | ⬜     | Read-only layout with labeled sections                         |
+| 4.2  | Display full-bleed photo hero with HorizontalPager for multiple media       | ⬜     | Full-width, no side padding, 3:4 ratio or 50% screen height; page indicator dots; back button + mood chip overlaid on image |
+| 4.3  | Display metadata below image: title, notes, mood, location, date, tags     | ⬜     | Scrollable column, 16dp horizontal padding; labeled sections   |
 | 4.4  | Implement edit mode toggle (FAB or toolbar button)                          | ⬜     | Switch between read-only and editable fields                   |
 | 4.5  | Save edits: update MemoryEntity and related entities                        | ⬜     | Repository update method; show success snackbar                |
 | 4.6  | Delete memory with confirmation dialog                                      | ⬜     | AlertDialog; delete memory + cascade media/tags; navigate back |
@@ -203,7 +205,7 @@ Text search across memories and a collections (albums) system for manual groupin
 | 6.2  | Build search bar with text input and clear button                            | ⬜     | Material 3 SearchBar composable                              |
 | 6.3  | Implement text search across notes, title, and placeLabel fields             | ⬜     | Room DAO query with LIKE %query%; consider FTS later         |
 | 6.4  | Add filter chips: mood selector, date range picker                           | ⬜     | Combine with text query in repository                        |
-| 6.5  | Display search results using MemoryCard composable (reuse from timeline)     | ⬜     | LazyColumn of results; show result count                     |
+| 6.5  | Display search results using MemoryCard search-result variant (horizontal layout) | ⬜ | Square thumbnail + text row; LazyColumn; show result count   |
 | 6.6  | Build CollectionListScreen -- display all collections                        | ⬜     | LazyColumn of collection cards with name, count, cover image |
 | 6.7  | Create collection dialog (name, optional description)                        | ⬜     | AlertDialog with TextField inputs                            |
 | 6.8  | Implement add-memory-to-collection flow                                      | ⬜     | From detail screen action menu or long-press on timeline     |
