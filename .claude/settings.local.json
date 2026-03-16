@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew assembleDebug 2>&1 | tail -60)",
+      "mcp__serena__list_memories",
+      "mcp__serena__activate_project",
+      "mcp__serena__read_memory",
+      "mcp__serena__list_dir",
+      "mcp__serena__read_file",
+      "Bash(mkdir:*)",
+      "Bash(cd:*)"
+    ]
+  }
+}
