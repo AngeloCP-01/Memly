@@ -27,3 +27,6 @@
 | D023 | Media files stored in filesDir/media with UUID names | App-private; no MediaStore dependency; survives cache clearing |
 | D024 | Dedup check skips insert silently when hash exists | Non-disruptive UX; user doesn't need to know about duplicates |
 | D025 | Compose BOM 2025.05.00 | Aligns foundation (FlowRow) with newer navigation 2.9.7 / lifecycle 2.10.0 deps |
+| D026 | Three MemoryCard variants in shared `ui/components/` package | Timeline, carousel, and search cards have distinct layouts; shared file avoids duplication |
+| D027 | Time Hop query uses SQLite strftime for month-day matching | Cross-year date matching without loading all memories into memory |
+| D028 | Date grouping computed in ViewModel via Kotlin groupBy | Avoids re-computation on recomposition; clean separation from UI |

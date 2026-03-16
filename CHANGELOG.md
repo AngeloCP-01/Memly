@@ -4,6 +4,27 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Phase 1, Section 3: Timeline Screen
+**Date:** 2026-03-16
+
+### Added
+- TimelineViewModel with StateFlow<TimelineUiState> containing date-grouped memories and Time Hop
+- MemoryCard composable: image-dominant with gradient overlay, mood chip, title/date/place, tag chips
+- MemoryCard no-image fallback: surface background with mood accent strip
+- MemorySearchResultCard: horizontal layout with 80dp thumbnail + text
+- MemoryCarouselCard: 180dp wide, 4:5 ratio for Time Hop carousel with "X years ago" label
+- Sticky section headers (Today, Yesterday, day name, month year) with opaque background
+- Pull-to-refresh via PullToRefreshBox
+- Empty timeline state with message and "Create your first memory" CTA button
+- Time Hop DAO query using strftime for same-day-in-previous-years matching
+- onCaptureClick callback wired from empty state to navigation
+
+### Changed
+- TimelineViewModel rewritten from flat list to grouped TimelineUiState
+- TimelineScreen rewritten with LazyColumn stickyHeaders, Time Hop section, empty state
+
+---
+
 ## Phase 1, Section 2: Memory Capture (Core)
 **Date:** 2026-03-16
 

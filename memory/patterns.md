@@ -67,3 +67,20 @@
 - Camera temp photos stored in `cacheDir/camera/`
 - FileProvider paths defined in `res/xml/file_paths.xml`
 - Video thumbnails extracted via `MediaMetadataRetriever.getFrameAtTime()`
+
+## Timeline
+
+- `TimelineUiState` contains `groups: List<TimelineGroup>` and `timeHopMemories`
+- `TimelineGroup(header, memories)` — date-grouped sections
+- Grouping logic: Today → Yesterday → day name (within week) → "MMMM yyyy" (older)
+- `combine()` merges grouped memories + Time Hop into single UiState
+- Sticky headers use `Surface` with opaque background to prevent text overlap on scroll
+- Time Hop DAO query uses `strftime('%m-%d', ...)` for cross-year date matching
+
+## Shared Components
+
+- `MemoryCard` — image-dominant timeline card in `ui/components/MemoryCard.kt`
+- `MemoryCarouselCard` — compact card for horizontal carousels
+- `MemorySearchResultCard` — horizontal row card for search/collection screens
+- All cards accept `Modifier` parameter and use `remember` for date formatters
+- Press animation via `pointerInput` + `detectTapGestures` + `animateFloatAsState(0.97f)`

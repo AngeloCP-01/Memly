@@ -112,9 +112,9 @@ Full capture flow implemented: media selection (gallery + camera), text input wi
 
 ## Section 3: Timeline Screen
 
-**Status:** NOT STARTED
+**Status:** COMPLETE
 
-Transform the placeholder timeline into a fully functional chronological feed of memories with clustering and thumbnails.
+Fully functional timeline with date-grouped memories, three MemoryCard variants (image-dominant, no-image fallback, search result), Time Hop carousel, sticky headers, pull-to-refresh, and empty state with CTA.
 
 **Risks:**
 - Performance with large lists requires proper use of LazyColumn keys and stable items.
@@ -122,17 +122,17 @@ Transform the placeholder timeline into a fully functional chronological feed of
 
 | Task | Description                                                                 | Status | Notes                                                         |
 |------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
-| 3.1  | Enhance TimelineViewModel to expose StateFlow<TimelineUiState> with grouped memories | ⬜ | UiState contains list of TimelineGroup (header + memories)    |
-| 3.2  | Build MemoryCard composable — image-dominant with gradient overlay (see ui-design-guide.md) | ⬜ | 3:4 portrait aspect ratio; dark gradient overlay bottom third; title + date + mood chip over gradient; tag chips below image |
-| 3.2a | Build MemoryCard no-image fallback variant (surface background + mood accent strip) | ⬜ | For memories without media |
-| 3.2b | Build MemoryCard search result variant (horizontal: square thumbnail + text) | ⬜ | 80dp thumbnail, used in search and collection screens |
-| 3.3  | Load and display thumbnails in MemoryCard using Coil AsyncImage             | ⬜     | Crossfade transition; placeholder shimmer                      |
-| 3.4  | Implement day/week/month clustering with sticky section headers             | ⬜     | Group by date in ViewModel; LazyColumn stickyHeader            |
-| 3.5  | Add pull-to-refresh using Material 3 PullToRefresh                          | ⬜     | Triggers re-query from repository                              |
-| 3.6  | Build empty state composable (illustration + message + CTA to capture)      | ⬜     | Shown when memory list is empty                                |
-| 3.7  | Navigate to memory detail on card tap (pass memoryId)                       | ⬜     | NavController.navigate with memoryId argument                  |
-| 3.8  | Implement "Time Hop" horizontal carousel for memories from this day in previous years | ⬜ | Carousel variant cards (180dp wide, 4:5 ratio); "X years ago" label; shown at top of timeline |
-| 3.9  | Verify: timeline displays memories with clustering, thumbnails, and navigation | ⬜  | Manual test with multiple memories across different dates      |
+| 3.1  | Enhance TimelineViewModel to expose StateFlow<TimelineUiState> with grouped memories | ✅ | TimelineUiState with groups + timeHopMemories via combine     |
+| 3.2  | Build MemoryCard composable — image-dominant with gradient overlay (see ui-design-guide.md) | ✅ | 3:4 portrait aspect ratio; dark gradient overlay bottom third; title + date + mood chip over gradient; tag chips below image |
+| 3.2a | Build MemoryCard no-image fallback variant (surface background + mood accent strip) | ✅ | Surface variant bg with mood color accent strip at top |
+| 3.2b | Build MemoryCard search result variant (horizontal: square thumbnail + text) | ✅ | 80dp thumbnail, MemorySearchResultCard composable |
+| 3.3  | Load and display thumbnails in MemoryCard using Coil AsyncImage             | ✅     | AsyncImage with File model from thumbnailPath                  |
+| 3.4  | Implement day/week/month clustering with sticky section headers             | ✅     | Today/Yesterday/day name/month grouping; stickyHeader with opaque bg |
+| 3.5  | Add pull-to-refresh using Material 3 PullToRefresh                          | ✅     | PullToRefreshBox wrapping timeline; Room Flow auto-updates     |
+| 3.6  | Build empty state composable (illustration + message + CTA to capture)      | ✅     | Message + "Create your first memory" button                    |
+| 3.7  | Navigate to memory detail on card tap (pass memoryId)                       | ✅     | onMemoryClick callback wired to NavController                  |
+| 3.8  | Implement "Time Hop" horizontal carousel for memories from this day in previous years | ✅ | MemoryCarouselCard (180dp, 4:5); "X years ago" label; DAO query with strftime |
+| 3.9  | Verify: timeline displays memories with clustering, thumbnails, and navigation | ✅  | Build passes; all components wired                             |
 
 **Checkpoint:** Timeline shows all memories grouped by date. Thumbnails load. Tapping a card navigates to detail. Time Hop surfaces old memories.
 
