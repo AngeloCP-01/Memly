@@ -15,7 +15,11 @@
       "mcp__serena__onboarding",
       "mcp__serena__write_memory",
       "Bash(tail:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(./gradlew assembleDebug 2>&1 | tail -30)",
+      "Bash(./gradlew compileDebugKotlin 2>&1 | tail -10)",
+      "Bash(cp:*)"
     ]
   }
 }

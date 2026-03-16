@@ -2,36 +2,40 @@
 name: section-done
 description: Run after completing a section. Launches code review, updates all tracking docs, and commits.
 disable-model-invocation: true
-argument-hint: [phase] [section] [section-name]
+argument-hint: phase [number] section [number]
 ---
 
 # Section Done
 
-Complete the end-of-section protocol for **Phase $0, Section $1: $2**.
+Complete the end-of-section protocol for **Phase $1, Section $3**.
+
+**First:** Read `docs/phase$1-tasks.md` to find the section name for Section $3 (it's in the section heading, e.g. "## Section 2: Memory Capture (Core)" → section name is "Memory Capture").
+
+Use the phase number, section number, and section name throughout the steps below.
 
 ## Step 1: Launch Code Review Agent
 
 1. Read `memory/review-agent.md` for the prompt template.
-2. Fill in the template: PHASE=$0, SECTION=$1, SECTION_NAME=$2.
+2. Fill in the template with the phase number, section number, and section name.
 3. Identify all source files changed/created in this section (use `git diff` and `git status`).
 4. Launch a **background** code review agent with the filled template and file list.
 
-## Step 2: Update Tracking Docs (while review runs)
+## Step 2: Update Tracking Docs (wait for review completion)
 
 Update ALL of the following files:
 
 ### memory/progress.md
-- Mark Section $1 as COMPLETE.
-- Update the "Last completed" pointer to Phase $0, Section $1.
+- Mark Section $3 as COMPLETE.
+- Update the "Last completed" pointer to Phase $1, Section $3.
 - Set "Next" to the next section (increment section number, or next phase if last section).
 
-### docs/phase$0-tasks.md
-- Change all task statuses in Section $1 from ⬜ to ✅.
+### docs/phase$1-tasks.md
+- Change all task statuses in Section $3 from ⬜ to ✅.
 - Update the section Status to COMPLETE.
 - Add any relevant notes.
 
 ### CHANGELOG.md
-- Add a new entry for Phase $0, Section $1: $2.
+- Add a new entry for Phase $1, Section $3 with the section name.
 - List what was Added, Changed, or Fixed in this section.
 
 ### memory/patterns.md
@@ -55,10 +59,10 @@ Update ALL of the following files:
 
 ## Step 4: Commit
 
-Create a conventional commit with scope:
+Create a conventional commit with scope. Example format:
 
 ```
-docs(phase$0): complete section $1 - $2
+docs(phase1): complete section 2 - Memory Capture
 ```
 
 Stage only the tracking/doc files updated in Step 2. Do NOT stage source code files (those should already be committed).
