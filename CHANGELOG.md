@@ -23,6 +23,12 @@ All notable changes to Memly are documented here, organized by phase and section
 - FileProvider configuration (file_paths.xml) for camera capture URIs
 - play-services-location dependency for GPS
 
+### Fixed
+- Compose BOM updated from 2024.09.00 to 2025.05.00 (fixed FlowRow runtime crash from foundation version mismatch)
+- Fixed hiltViewModel import path in TimelineScreen and CaptureScreen (`androidx.hilt.navigation.compose`)
+- CaptureViewModel: replaced AndroidViewModel with ViewModel + @ApplicationContext
+- CaptureViewModel: replaced isNullOrBlank() with isBlank() on non-nullable strings
+
 ### Changed
 - MemoryRepository: added createMemoryWithDetails() transactional method, injected MemlyDatabase
 - ThumbnailUtil: refactored to support both image and video thumbnails via MediaType parameter

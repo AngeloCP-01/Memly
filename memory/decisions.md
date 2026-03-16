@@ -26,3 +26,4 @@
 | D022 | play-services-location 21.3.0 for GPS | FusedLocationProviderClient provides best location with minimal setup |
 | D023 | Media files stored in filesDir/media with UUID names | App-private; no MediaStore dependency; survives cache clearing |
 | D024 | Dedup check skips insert silently when hash exists | Non-disruptive UX; user doesn't need to know about duplicates |
+| D025 | Compose BOM 2025.05.00 | Aligns foundation (FlowRow) with newer navigation 2.9.7 / lifecycle 2.10.0 deps |
