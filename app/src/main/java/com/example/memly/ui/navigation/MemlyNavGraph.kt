@@ -27,6 +27,9 @@ fun MemlyNavGraph(
             TimelineScreen(
                 onMemoryClick = { memoryId ->
                     navController.navigate(Screen.MemoryDetail.createRoute(memoryId))
+                },
+                onCaptureClick = {
+                    navController.navigate(Screen.Capture.route)
                 }
             )
         }

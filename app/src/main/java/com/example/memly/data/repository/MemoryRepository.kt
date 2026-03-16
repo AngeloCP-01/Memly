@@ -73,6 +73,9 @@ class MemoryRepository @Inject constructor(
 
     fun getAllTags(): Flow<List<TagEntity>> = tagDao.getAllTags()
 
+    fun getTimeHopMemories(todayMillis: Long): Flow<List<MemoryWithDetails>> =
+        memoryDao.getTimeHopMemories(todayMillis)
+
     suspend fun createMemoryWithDetails(
         memory: MemoryEntity,
         mediaFiles: List<MediaFileEntity>,

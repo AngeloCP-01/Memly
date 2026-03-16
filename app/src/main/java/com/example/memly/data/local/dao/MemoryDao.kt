@@ -52,6 +52,15 @@ interface MemoryDao {
     @Query("SELECT * FROM memories WHERE latitude IS NOT NULL AND longitude IS NOT NULL ORDER BY memoryDate DESC")
     fun getGeotaggedMemories(): Flow<List<MemoryEntity>>
 
+    @Transaction
+    @Query("""
+        SELECT * FROM memories
+        WHERE strftime('%m-%d', memoryDate / 1000, 'unixepoch', 'localtime') = strftime('%m-%d', :todayMillis / 1000, 'unixepoch', 'localtime')
+        AND strftime('%Y', memoryDate / 1000, 'unixepoch', 'localtime') != strftime('%Y', :todayMillis / 1000, 'unixepoch', 'localtime')
+        ORDER BY memoryDate DESC
+    """)
+    fun getTimeHopMemories(todayMillis: Long): Flow<List<MemoryWithDetails>>
+
     // Media file operations
     @Insert
     suspend fun insertMediaFile(mediaFile: MediaFileEntity): Long

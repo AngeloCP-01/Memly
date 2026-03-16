@@ -1,7 +1,7 @@
 ---
 name: section-done
 description: Run after completing a section. Launches code review, updates all tracking docs, and commits.
-disable-model-invocation: true
+disable-model-invocation: false
 argument-hint: phase [number] section [number]
 ---
 
