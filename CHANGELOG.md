@@ -4,6 +4,20 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Phase 2, Section 5: Theme & UI Polish
+**Date:** 2026-03-17
+
+### Verified
+- Full Memly palette already in Color.kt (light + dark) from Phase 1
+- Theme.kt already wired with lightColorScheme() + darkColorScheme() + MemlyShapes
+- Typography with Poppins (headings) + Inter (body) already bundled
+- Mood-specific colors via Mood.color() extension already used across all screens
+- Card designs audited: 16dp for main cards, 12dp for containers, 8dp for chips — consistent
+- All text/background colors use MaterialTheme.colorScheme — dark mode compatible
+- No source changes needed; section was already complete from Phase 1 implementation
+
+---
+
 ## Phase 1, Section 8: Integration & Polish
 **Date:** 2026-03-17
 

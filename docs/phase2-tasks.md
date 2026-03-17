@@ -137,23 +137,23 @@ First-launch guided experience that introduces the app and requests necessary pe
 
 ## Section 5: Theme & UI Polish
 
-**Status:** NOT STARTED
+**Status:** COMPLETE
 
-Implement the Memly visual identity with soft pastel colors, warm typography, and mood-specific color indicators throughout the app.
+Memly visual identity fully implemented in Phase 1 — soft pastel palette, Poppins/Inter typography, mood-specific colors, and card designs. Phase 2 audit confirmed consistency across all screens.
 
 **Risks:**
-- Low. Visual-only changes with no data or logic impact.
+- ~~Low. Visual-only changes with no data or logic impact.~~
 
 | Task | Description                                                                 | Status | Notes                                                         |
 |------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
-| 5.1  | Design custom color scheme: pastel primaries, warm surfaces, muted accents (light + dark) | ⬜ | Define palette values before implementation                  |
-| 5.2  | Update Color.kt with the full Memly palette                                 | ⬜     | Add all named color constants for both light and dark variants |
-| 5.3  | Update Theme.kt with custom light and dark color schemes                    | ⬜     | Wire palette into lightColorScheme() and darkColorScheme()     |
-| 5.4  | Update Typography with a warmer font family or adjust weights and sizes     | ⬜     | Consider a rounded sans-serif; keep default if it fits the feel |
-| 5.5  | Mood-specific colors: assign a color to each Mood enum value               | ⬜     | Property or extension function on Mood returning a Color       |
-| 5.6  | Add mood color indicators throughout the app (timeline cards, detail, chips) | ⬜    | Tinted borders, chip backgrounds, or dot indicators            |
-| 5.7  | Polish card designs: rounded corners, subtle elevation, spacing consistency  | ⬜     | Audit all Card composables for uniform shape and padding       |
-| 5.8  | Verify: all screens reflect the new theme in both light and dark mode        | ⬜     | Toggle system theme and walk through every screen              |
+| 5.1  | Design custom color scheme: pastel primaries, warm surfaces, muted accents (light + dark) | ✅ | Full palette in Color.kt: Soft Coral, Warm Beige, Soft Teal + dark variants |
+| 5.2  | Update Color.kt with the full Memly palette                                 | ✅     | Light + Dark colors for all Material 3 slots + MoodColors object |
+| 5.3  | Update Theme.kt with custom light and dark color schemes                    | ✅     | lightColorScheme() + darkColorScheme() with all Memly colors; MemlyShapes |
+| 5.4  | Update Typography with a warmer font family or adjust weights and sizes     | ✅     | Poppins (headings) + Inter (body) with all weights bundled as TTF |
+| 5.5  | Mood-specific colors: assign a color to each Mood enum value               | ✅     | Mood.color() extension in MoodTheme.kt; 10 distinct mood colors |
+| 5.6  | Add mood color indicators throughout the app (timeline cards, detail, chips) | ✅    | Mood chips on cards, detail hero, filter chips, map pins, accent strips |
+| 5.7  | Polish card designs: rounded corners, subtle elevation, spacing consistency  | ✅     | Audit confirmed: 16dp cards, 12dp containers, 8dp chips — consistent |
+| 5.8  | Verify: all screens reflect the new theme in both light and dark mode        | ✅     | All colors via MaterialTheme.colorScheme; dark scheme fully wired |
 
 **Checkpoint:** App has a cohesive pastel visual identity. Mood colors appear as indicators on cards and chips. Light and dark themes are both polished and consistent.
 

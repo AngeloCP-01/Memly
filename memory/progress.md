@@ -13,7 +13,19 @@
 | 7 | Settings & Profile   | COMPLETE    |
 | 8 | Polish & Edge Cases  | COMPLETE    |
 
+## Phase 2: Enhanced Experience
+
+| # | Section              | Status      |
+|---|----------------------|-------------|
+| 1 | Voice Memos          | NOT STARTED |
+| 2 | Video Playback       | NOT STARTED |
+| 3 | Enhanced Capture     | NOT STARTED |
+| 4 | Onboarding Flow      | NOT STARTED |
+| 5 | Theme & UI Polish    | COMPLETE    |
+| 6 | Data Management      | NOT STARTED |
+| 7 | Integration & Polish | NOT STARTED |
+
 ## Current Pointer
 
-- **Last completed:** Phase 1, Section 8 -- Integration & Polish (2026-03-17)
-- **Next:** Phase 2, Section 1 -- Phase 1 complete. Begin Phase 2: Enhanced Experience
+- **Last completed:** Phase 2, Section 5 -- Theme & UI Polish (2026-03-17)
+- **Next:** Phase 2, Section 1 -- Voice Memos (or any other Phase 2 section)
