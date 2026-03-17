@@ -26,7 +26,8 @@ data class CollectionListUiState(
     val collections: List<CollectionWithCount> = emptyList(),
     val isLoading: Boolean = true,
     val showCreateDialog: Boolean = false,
-    val showDeleteDialog: CollectionEntity? = null
+    val showDeleteDialog: CollectionEntity? = null,
+    val error: String? = null
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -39,7 +40,8 @@ class CollectionListViewModel @Inject constructor(
 
     private data class DialogState(
         val showCreateDialog: Boolean = false,
-        val showDeleteDialog: CollectionEntity? = null
+        val showDeleteDialog: CollectionEntity? = null,
+        val error: String? = null
     )
 
     val uiState: StateFlow<CollectionListUiState> = combine(
@@ -63,7 +65,8 @@ class CollectionListViewModel @Inject constructor(
             collections = collectionsWithCounts,
             isLoading = false,
             showCreateDialog = dialogState.showCreateDialog,
-            showDeleteDialog = dialogState.showDeleteDialog
+            showDeleteDialog = dialogState.showDeleteDialog,
+            error = dialogState.error
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CollectionListUiState())
 
@@ -77,13 +80,17 @@ class CollectionListViewModel @Inject constructor(
 
     fun createCollection(name: String, description: String?) {
         viewModelScope.launch {
-            collectionRepository.createCollection(
-                CollectionEntity(
-                    name = name,
-                    description = description?.ifBlank { null }
+            try {
+                collectionRepository.createCollection(
+                    CollectionEntity(
+                        name = name,
+                        description = description?.ifBlank { null }
+                    )
                 )
-            )
-            _dialogState.update { it.copy(showCreateDialog = false) }
+                _dialogState.update { it.copy(showCreateDialog = false) }
+            } catch (e: Exception) {
+                _dialogState.update { it.copy(error = "Failed to create: ${e.message}") }
+            }
         }
     }
 
@@ -97,8 +104,16 @@ class CollectionListViewModel @Inject constructor(
 
     fun deleteCollection(collection: CollectionEntity) {
         viewModelScope.launch {
-            collectionRepository.deleteCollection(collection)
-            _dialogState.update { it.copy(showDeleteDialog = null) }
+            try {
+                collectionRepository.deleteCollection(collection)
+                _dialogState.update { it.copy(showDeleteDialog = null) }
+            } catch (e: Exception) {
+                _dialogState.update { it.copy(showDeleteDialog = null, error = "Failed to delete: ${e.message}") }
+            }
         }
+    }
+
+    fun clearError() {
+        _dialogState.update { it.copy(error = null) }
     }
 }

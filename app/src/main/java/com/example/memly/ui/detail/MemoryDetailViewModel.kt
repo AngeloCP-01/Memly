@@ -60,18 +60,22 @@ class MemoryDetailViewModel @Inject constructor(
     private fun loadMemory() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            val details = memoryRepository.getMemoryWithDetails(memoryId)
-            if (details != null) {
-                _uiState.update {
-                    it.copy(
-                        memory = details.memory,
-                        mediaFiles = details.mediaFiles,
-                        tags = details.tags,
-                        isLoading = false
-                    )
+            try {
+                val details = memoryRepository.getMemoryWithDetails(memoryId)
+                if (details != null) {
+                    _uiState.update {
+                        it.copy(
+                            memory = details.memory,
+                            mediaFiles = details.mediaFiles,
+                            tags = details.tags,
+                            isLoading = false
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(isLoading = false, error = "Memory not found") }
                 }
-            } else {
-                _uiState.update { it.copy(isLoading = false, error = "Memory not found") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = "Failed to load: ${e.message}") }
             }
         }
     }
@@ -195,14 +199,18 @@ class MemoryDetailViewModel @Inject constructor(
 
     fun showCollectionDialog() {
         viewModelScope.launch {
-            val collections = collectionRepository.getAllCollections().first()
-            val memberIds = collectionRepository.getCollectionIdsForMemory(memoryId).first().toSet()
-            _uiState.update {
-                it.copy(
-                    showCollectionDialog = true,
-                    allCollections = collections,
-                    memberCollectionIds = memberIds
-                )
+            try {
+                val collections = collectionRepository.getAllCollections().first()
+                val memberIds = collectionRepository.getCollectionIdsForMemory(memoryId).first().toSet()
+                _uiState.update {
+                    it.copy(
+                        showCollectionDialog = true,
+                        allCollections = collections,
+                        memberCollectionIds = memberIds
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to load collections: ${e.message}") }
             }
         }
     }
@@ -213,17 +221,21 @@ class MemoryDetailViewModel @Inject constructor(
 
     fun toggleCollection(collectionId: Long) {
         viewModelScope.launch {
-            val isMember = collectionId in _uiState.value.memberCollectionIds
-            if (isMember) {
-                collectionRepository.removeMemoryFromCollection(memoryId, collectionId)
-                _uiState.update {
-                    it.copy(memberCollectionIds = it.memberCollectionIds - collectionId)
+            try {
+                val isMember = collectionId in _uiState.value.memberCollectionIds
+                if (isMember) {
+                    collectionRepository.removeMemoryFromCollection(memoryId, collectionId)
+                    _uiState.update {
+                        it.copy(memberCollectionIds = it.memberCollectionIds - collectionId)
+                    }
+                } else {
+                    collectionRepository.addMemoryToCollection(memoryId, collectionId)
+                    _uiState.update {
+                        it.copy(memberCollectionIds = it.memberCollectionIds + collectionId)
+                    }
                 }
-            } else {
-                collectionRepository.addMemoryToCollection(memoryId, collectionId)
-                _uiState.update {
-                    it.copy(memberCollectionIds = it.memberCollectionIds + collectionId)
-                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to update collection: ${e.message}") }
             }
         }
     }

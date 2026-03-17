@@ -309,7 +309,7 @@ fun CaptureScreen(
                             if (state.isLocationLoading) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                             } else if (state.latitude != null) {
-                                Text("📍 ${String.format("%.4f, %.4f", state.latitude, state.longitude)}")
+                                Text("📍 ${String.format(java.util.Locale.ROOT, "%.4f, %.4f", state.latitude, state.longitude)}")
                             } else {
                                 Text("Get Location")
                             }

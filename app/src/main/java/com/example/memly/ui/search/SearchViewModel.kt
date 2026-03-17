@@ -23,8 +23,7 @@ data class SearchUiState(
     val moodFilter: Mood? = null,
     val results: List<MemoryWithDetails> = emptyList(),
     val resultCount: Int = 0,
-    val hasSearched: Boolean = false,
-    val isLoading: Boolean = false
+    val hasSearched: Boolean = false
 )
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
@@ -61,8 +60,7 @@ class SearchViewModel @Inject constructor(
             moodFilter = moodFilter,
             results = filtered,
             resultCount = filtered.size,
-            hasSearched = query.isNotBlank(),
-            isLoading = false
+            hasSearched = query.isNotBlank()
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SearchUiState())
 

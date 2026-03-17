@@ -49,13 +49,21 @@ class CollectionDetailViewModel @Inject constructor(
 
     private fun loadCollection() {
         viewModelScope.launch {
-            _collection.value = collectionRepository.getCollectionById(collectionId)
+            try {
+                _collection.value = collectionRepository.getCollectionById(collectionId)
+            } catch (_: Exception) {
+                // Collection not found — UI will show null state
+            }
         }
     }
 
     fun removeMemoryFromCollection(memoryId: Long) {
         viewModelScope.launch {
-            collectionRepository.removeMemoryFromCollection(memoryId, collectionId)
+            try {
+                collectionRepository.removeMemoryFromCollection(memoryId, collectionId)
+            } catch (_: Exception) {
+                // Silently fail — memory remains in collection
+            }
         }
     }
 }
