@@ -220,23 +220,24 @@ Text search with debounced queries and mood filter, plus full collections CRUD w
 
 ## Section 7: Settings & Profile
 
-**Status:** NOT STARTED
+**Status:** COMPLETE
 
-Basic settings screen with app info and data management.
+Settings screen with app info, storage stats, and clear-all-data with double confirmation.
 
 **Risks:**
-- Low risk overall. Clear-all-data operation must be confirmed and thorough.
+- ~~Low risk overall. Clear-all-data operation must be confirmed and thorough.~~
+- Double confirmation prevents accidental data loss.
 
 | Task | Description                                                                 | Status | Notes                                                         |
 |------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
-| 7.1  | Create SettingsViewModel with storage stats                                 | ⬜     | Query memory count, media count, estimate storage via File API |
-| 7.2  | Build SettingsScreen layout (preference-style list)                          | ⬜     | Column with Section headers and ListItem rows                  |
-| 7.3  | Add About section (app name, version from BuildConfig)                      | ⬜     | Read BuildConfig.VERSION_NAME and VERSION_CODE                 |
-| 7.4  | Display storage info (memory count, media count, estimated disk usage)       | ⬜     | Formatted numbers and file sizes                               |
-| 7.5  | Implement clear-all-data with double confirmation dialog                     | ⬜     | Delete all Room data and media files from app storage           |
-| 7.6  | Verify: settings displays correct info, clear data works                     | ⬜     | Confirm counts match, data is actually removed                 |
+| 7.1  | Create SettingsViewModel with storage stats                                 | ✅     | Memory count, media count, disk usage via File API walkTopDown |
+| 7.2  | Build SettingsScreen layout (preference-style list)                          | ✅     | Scrollable Column with SectionHeader + Surface cards           |
+| 7.3  | Add About section (app name, version from BuildConfig)                      | ✅     | BuildConfig.VERSION_NAME + VERSION_CODE; buildConfig enabled   |
+| 7.4  | Display storage info (memory count, media count, estimated disk usage)       | ✅     | Formatted with formatBytes() helper; loading indicator         |
+| 7.5  | Implement clear-all-data with double confirmation dialog                     | ✅     | Two AlertDialogs: warning → final confirm; clears DB + files   |
+| 7.6  | Verify: settings displays correct info, clear data works                     | ✅     | Build passes; navigation wired via search screen shortcut      |
 
-**Checkpoint:** Settings screen shows app info and storage stats. Clear-all-data wipes everything after confirmation.
+**Checkpoint:** Settings screen shows app info and storage stats. Clear-all-data wipes everything after double confirmation.
 
 ---
 

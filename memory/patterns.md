@@ -122,3 +122,12 @@
 - `MemoryDetailViewModel` injects both `MemoryRepository` and `CollectionRepository`
 - Collection membership loaded via `getCollectionIdsForMemory()` on dialog open (not continuously observed)
 - FK CASCADE on `MemoryCollectionCrossRef` handles cleanup when collection or memory is deleted
+
+## Settings Screen
+
+- `SettingsViewModel` injects `@ApplicationContext Context`, `MemlyDatabase`, and `MemoryDao` directly
+- Storage stats loaded on `Dispatchers.IO` via `withContext`; disk usage calculated with `File.walkTopDown()`
+- `database.clearAllTables()` for Room data wipe; `File.deleteRecursively()` for media + thumbnails
+- Double confirmation pattern: first dialog warns, second shows exact counts and requires explicit "Delete Everything"
+- `BuildConfig.VERSION_NAME` and `VERSION_CODE` accessed after enabling `buildFeatures { buildConfig = true }`
+- Settings accessible via shortcut card on Search screen (same pattern as Collections shortcut)

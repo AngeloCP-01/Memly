@@ -37,3 +37,6 @@
 | D033 | LIKE queries for search instead of FTS4 | Simpler setup; sufficient for MVP scale; FTS4 can be added later if needed |
 | D034 | Add-to-collection via toggle dialog on detail screen | Cleaner UX than long-press; direct and discoverable; avoids complex multi-select |
 | D035 | Collection memory counts via combine of individual count flows | Reactive; updates when memories added/removed; acceptable for small collection counts |
+| D036 | SettingsViewModel injects MemlyDatabase + MemoryDao directly (not via repository) | Settings needs clearAllTables() and count queries; no repository abstraction needed for these |
+| D037 | Settings accessible from Search screen shortcut (not bottom nav tab) | Keeps bottom nav focused on core actions (Timeline, Map, Search); settings is secondary |
+| D038 | Double confirmation for clear-all-data | Prevents accidental data loss; second dialog shows exact counts for informed decision |

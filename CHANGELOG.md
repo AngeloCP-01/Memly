@@ -4,6 +4,22 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Phase 1, Section 7: Settings & Profile
+**Date:** 2026-03-17
+
+### Added
+- SettingsViewModel with storage stats (memory count, media count, disk usage via File API)
+- SettingsScreen with preference-style layout (About, Storage, Data Management sections)
+- About section displaying app name, version from BuildConfig.VERSION_NAME/VERSION_CODE
+- Storage info with formatted memory count, media file count, and human-readable disk usage
+- Clear-all-data with double confirmation dialog (two-step: warning → final confirm with counts)
+- Clears Room tables + deletes media files + deletes thumbnails
+- Settings navigation route and shortcut card on Search screen
+- BuildConfig generation enabled in build.gradle.kts
+- DAO queries: getMemoryCount(), getMediaFileCount()
+
+---
+
 ## Phase 1, Section 6: Search & Organization
 **Date:** 2026-03-17
 
