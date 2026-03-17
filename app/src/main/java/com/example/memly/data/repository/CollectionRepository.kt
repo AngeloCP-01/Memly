@@ -4,6 +4,7 @@ import com.example.memly.data.local.dao.CollectionDao
 import com.example.memly.data.local.entity.CollectionEntity
 import com.example.memly.data.local.entity.MemoryCollectionCrossRef
 import com.example.memly.data.local.entity.MemoryEntity
+import com.example.memly.data.local.entity.MemoryWithDetails
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -41,4 +42,13 @@ class CollectionRepository @Inject constructor(
 
     fun getMemoriesInCollection(collectionId: Long): Flow<List<MemoryEntity>> =
         collectionDao.getMemoriesInCollection(collectionId)
+
+    fun getMemoriesInCollectionWithDetails(collectionId: Long): Flow<List<MemoryWithDetails>> =
+        collectionDao.getMemoriesInCollectionWithDetails(collectionId)
+
+    fun getMemoryCountInCollection(collectionId: Long): Flow<Int> =
+        collectionDao.getMemoryCountInCollection(collectionId)
+
+    fun getCollectionIdsForMemory(memoryId: Long): Flow<List<Long>> =
+        collectionDao.getCollectionIdsForMemory(memoryId)
 }

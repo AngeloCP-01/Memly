@@ -3,15 +3,18 @@ package com.example.memly.ui.detail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.memly.data.local.entity.CollectionEntity
 import com.example.memly.data.local.entity.MediaFileEntity
 import com.example.memly.data.local.entity.MemoryEntity
 import com.example.memly.data.local.entity.Mood
 import com.example.memly.data.local.entity.TagEntity
+import com.example.memly.data.repository.CollectionRepository
 import com.example.memly.data.repository.MemoryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -31,13 +34,18 @@ data class DetailUiState(
     val editMood: Mood? = null,
     val editPlaceLabel: String = "",
     val editTags: List<String> = emptyList(),
-    val editTagInput: String = ""
+    val editTagInput: String = "",
+    // Collections
+    val showCollectionDialog: Boolean = false,
+    val allCollections: List<CollectionEntity> = emptyList(),
+    val memberCollectionIds: Set<Long> = emptySet()
 )
 
 @HiltViewModel
 class MemoryDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val memoryRepository: MemoryRepository
+    private val memoryRepository: MemoryRepository,
+    private val collectionRepository: CollectionRepository
 ) : ViewModel() {
 
     private val memoryId: Long = savedStateHandle["memoryId"] ?: -1L
@@ -183,5 +191,40 @@ class MemoryDetailViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.update { it.copy(error = null) }
+    }
+
+    fun showCollectionDialog() {
+        viewModelScope.launch {
+            val collections = collectionRepository.getAllCollections().first()
+            val memberIds = collectionRepository.getCollectionIdsForMemory(memoryId).first().toSet()
+            _uiState.update {
+                it.copy(
+                    showCollectionDialog = true,
+                    allCollections = collections,
+                    memberCollectionIds = memberIds
+                )
+            }
+        }
+    }
+
+    fun hideCollectionDialog() {
+        _uiState.update { it.copy(showCollectionDialog = false) }
+    }
+
+    fun toggleCollection(collectionId: Long) {
+        viewModelScope.launch {
+            val isMember = collectionId in _uiState.value.memberCollectionIds
+            if (isMember) {
+                collectionRepository.removeMemoryFromCollection(memoryId, collectionId)
+                _uiState.update {
+                    it.copy(memberCollectionIds = it.memberCollectionIds - collectionId)
+                }
+            } else {
+                collectionRepository.addMemoryToCollection(memoryId, collectionId)
+                _uiState.update {
+                    it.copy(memberCollectionIds = it.memberCollectionIds + collectionId)
+                }
+            }
+        }
     }
 }

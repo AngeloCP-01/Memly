@@ -49,6 +49,10 @@ interface MemoryDao {
     @Query("SELECT * FROM memories WHERE title LIKE '%' || :query || '%' OR notes LIKE '%' || :query || '%' OR placeLabel LIKE '%' || :query || '%' ORDER BY memoryDate DESC")
     fun searchMemories(query: String): Flow<List<MemoryEntity>>
 
+    @Transaction
+    @Query("SELECT * FROM memories WHERE title LIKE '%' || :query || '%' OR notes LIKE '%' || :query || '%' OR placeLabel LIKE '%' || :query || '%' ORDER BY memoryDate DESC")
+    fun searchMemoriesWithDetails(query: String): Flow<List<MemoryWithDetails>>
+
     @Query("SELECT * FROM memories WHERE latitude IS NOT NULL AND longitude IS NOT NULL ORDER BY memoryDate DESC")
     fun getGeotaggedMemories(): Flow<List<MemoryEntity>>
 

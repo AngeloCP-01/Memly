@@ -44,6 +44,9 @@ class MemoryRepository @Inject constructor(
     fun searchMemories(query: String): Flow<List<MemoryEntity>> =
         memoryDao.searchMemories(query)
 
+    fun searchMemoriesWithDetails(query: String): Flow<List<MemoryWithDetails>> =
+        memoryDao.searchMemoriesWithDetails(query)
+
     fun getGeotaggedMemories(): Flow<List<MemoryEntity>> =
         memoryDao.getGeotaggedMemories()
 

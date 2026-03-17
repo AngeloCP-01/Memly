@@ -1,6 +1,7 @@
 package com.example.memly.ui.detail
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CollectionsBookmark
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
@@ -67,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.example.memly.data.local.entity.CollectionEntity
 import com.example.memly.data.local.entity.MediaFileEntity
 import com.example.memly.data.local.entity.MemoryEntity
 import com.example.memly.data.local.entity.Mood
@@ -178,7 +182,8 @@ fun MemoryDetailScreen(
                             ReadModeContent(
                                 memory = memory,
                                 tags = state.tags,
-                                dateFormat = dateFormat
+                                dateFormat = dateFormat,
+                                onAddToCollection = { viewModel.showCollectionDialog() }
                             )
                         }
                     }
@@ -212,6 +217,73 @@ fun MemoryDetailScreen(
             }
         )
     }
+
+    // Add to collection dialog
+    if (state.showCollectionDialog) {
+        AddToCollectionDialog(
+            collections = state.allCollections,
+            memberCollectionIds = state.memberCollectionIds,
+            onToggle = { viewModel.toggleCollection(it) },
+            onDismiss = { viewModel.hideCollectionDialog() }
+        )
+    }
+}
+
+@Composable
+private fun AddToCollectionDialog(
+    collections: List<CollectionEntity>,
+    memberCollectionIds: Set<Long>,
+    onToggle: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add to Collection") },
+        text = {
+            if (collections.isEmpty()) {
+                Text("No collections yet. Create one from the Collections screen.")
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    collections.forEach { collection ->
+                        val isMember = collection.id in memberCollectionIds
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isMember) MaterialTheme.colorScheme.primaryContainer
+                                    else MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onToggle(collection.id) }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = collection.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (isMember) FontWeight.SemiBold else FontWeight.Normal,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                if (isMember) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = "In collection",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Done")
+            }
+        }
+    )
 }
 
 @Composable
@@ -352,7 +424,8 @@ private fun PhotoHeroSection(
 private fun ReadModeContent(
     memory: MemoryEntity,
     tags: List<TagEntity>,
-    dateFormat: SimpleDateFormat
+    dateFormat: SimpleDateFormat,
+    onAddToCollection: () -> Unit
 ) {
     // Title
     Text(
@@ -435,6 +508,33 @@ private fun ReadModeContent(
                     )
                 }
             }
+        }
+    }
+
+    // Add to collection button
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onAddToCollection)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.CollectionsBookmark,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = "Add to collection",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }
