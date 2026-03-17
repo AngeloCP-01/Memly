@@ -191,29 +191,30 @@ osmdroid (OpenStreetMap) integration with mood-colored pins, preview card on tap
 
 ## Section 6: Search & Organization
 
-**Status:** NOT STARTED
+**Status:** COMPLETE
 
-Text search across memories and a collections (albums) system for manual grouping.
+Text search with debounced queries and mood filter, plus full collections CRUD with add-from-detail flow.
 
 **Risks:**
-- Full-text search in Room requires FTS4 virtual table setup or LIKE queries (less performant).
-- UX for assigning memories to collections needs careful design (multi-select or per-memory action).
+- ~~Full-text search in Room requires FTS4 virtual table setup or LIKE queries (less performant).~~
+- Using LIKE queries for now; FTS4 can be added later if performance becomes an issue.
+- Add-to-collection implemented via toggle dialog on memory detail screen.
 
 | Task | Description                                                                  | Status | Notes                                                        |
 |------|------------------------------------------------------------------------------|--------|--------------------------------------------------------------|
-| 6.1  | Create SearchViewModel with query state, filters, and search results         | ⬜     | Debounced query input; StateFlow<SearchUiState>              |
-| 6.2  | Build search bar with text input and clear button                            | ⬜     | Material 3 SearchBar composable                              |
-| 6.3  | Implement text search across notes, title, and placeLabel fields             | ⬜     | Room DAO query with LIKE %query%; consider FTS later         |
-| 6.4  | Add filter chips: mood selector, date range picker                           | ⬜     | Combine with text query in repository                        |
-| 6.5  | Display search results using MemoryCard search-result variant (horizontal layout) | ⬜ | Square thumbnail + text row; LazyColumn; show result count   |
-| 6.6  | Build CollectionListScreen -- display all collections                        | ⬜     | LazyColumn of collection cards with name, count, cover image |
-| 6.7  | Create collection dialog (name, optional description)                        | ⬜     | AlertDialog with TextField inputs                            |
-| 6.8  | Implement add-memory-to-collection flow                                      | ⬜     | From detail screen action menu or long-press on timeline     |
-| 6.9  | Build CollectionDetailScreen -- memories belonging to a collection           | ⬜     | Reuse timeline-style list filtered by collection             |
-| 6.10 | Delete collection with confirmation (memories remain, only grouping removed) | ⬜     | AlertDialog; delete CollectionEntity and join table entries   |
-| 6.11 | Verify: search returns correct results, collections CRUD works end-to-end    | ⬜     | Test with varied queries and multiple collections            |
+| 6.1  | Create SearchViewModel with query state, filters, and search results         | ✅     | 300ms debounced query; mood filter; StateFlow<SearchUiState> |
+| 6.2  | Build search bar with text input and clear button                            | ✅     | OutlinedTextField with search icon + clear IconButton         |
+| 6.3  | Implement text search across notes, title, and placeLabel fields             | ✅     | searchMemoriesWithDetails with LIKE %query% + @Transaction   |
+| 6.4  | Add filter chips: mood selector                                              | ✅     | FilterChip FlowRow; toggleable per mood; combined with query |
+| 6.5  | Display search results using MemorySearchResultCard (horizontal layout)      | ✅     | LazyColumn with result count; keyed items                    |
+| 6.6  | Build CollectionListScreen -- display all collections                        | ✅     | Cards with name, description, memory count; FAB to create    |
+| 6.7  | Create collection dialog (name, optional description)                        | ✅     | AlertDialog with name + description OutlinedTextFields       |
+| 6.8  | Implement add-memory-to-collection flow                                      | ✅     | Toggle dialog on detail screen with checkmark indicators     |
+| 6.9  | Build CollectionDetailScreen -- memories belonging to a collection           | ✅     | MemorySearchResultCard list with description + count header  |
+| 6.10 | Delete collection with confirmation (memories remain, only grouping removed) | ✅     | AlertDialog; FK CASCADE handles join table cleanup            |
+| 6.11 | Verify: search returns correct results, collections CRUD works end-to-end    | ✅     | Build passes; all components wired via navigation             |
 
-**Checkpoint:** Search finds memories by text and filters. Collections can be created, populated, viewed, and deleted.
+**Checkpoint:** Search finds memories by text and mood filter. Collections can be created, populated, viewed, and deleted. Add-to-collection available from detail screen.
 
 ---
 

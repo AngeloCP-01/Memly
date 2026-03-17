@@ -105,3 +105,20 @@
 - Mood filter chips overlay on top of map with `FlowRow`
 - Preview card slides in from bottom on pin tap using `AnimatedVisibility`
 - `getGeotaggedMemoriesWithDetails()` returns `Flow<List<MemoryWithDetails>>` with `@Transaction`
+
+## Search Screen
+
+- `SearchViewModel` uses `debounce(300)` + `flatMapLatest` for reactive search
+- Empty query returns `flowOf(emptyList())` to avoid unnecessary DB queries
+- Mood filter applied in `combine` on top of search results (client-side filtering)
+- Collections shortcut card on search screen links to `CollectionListScreen`
+- Results displayed with `MemorySearchResultCard` in `LazyColumn` with keyed items
+
+## Collections
+
+- `CollectionListViewModel` uses `flatMapLatest` + `combine` to merge collection list with per-collection memory counts
+- `CollectionDetailViewModel` loads via `SavedStateHandle["collectionId"]`
+- Add-to-collection flow lives on `MemoryDetailScreen` — toggle dialog with checkmarks
+- `MemoryDetailViewModel` injects both `MemoryRepository` and `CollectionRepository`
+- Collection membership loaded via `getCollectionIdsForMemory()` on dialog open (not continuously observed)
+- FK CASCADE on `MemoryCollectionCrossRef` handles cleanup when collection or memory is deleted

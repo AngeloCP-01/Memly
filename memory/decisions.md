@@ -34,3 +34,6 @@
 | D030 | Tag updates as individual add/remove (not transactional) | Acceptable for local-only app; can wrap in transaction later if needed |
 | D031 | SavedStateHandle for memoryId in detail ViewModel | Standard Hilt pattern for navigation arguments; survives process death |
 | D032 | osmdroid (OpenStreetMap) over Google Maps for map view | No API key needed, truly offline-capable, aligns with offline-first philosophy; tradeoff is AndroidView wrapper |
+| D033 | LIKE queries for search instead of FTS4 | Simpler setup; sufficient for MVP scale; FTS4 can be added later if needed |
+| D034 | Add-to-collection via toggle dialog on detail screen | Cleaner UX than long-press; direct and discoverable; avoids complex multi-select |
+| D035 | Collection memory counts via combine of individual count flows | Reactive; updates when memories added/removed; acceptable for small collection counts |

@@ -4,6 +4,31 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Phase 1, Section 6: Search & Organization
+**Date:** 2026-03-17
+
+### Added
+- SearchViewModel with debounced query (300ms), mood filter, and StateFlow<SearchUiState>
+- SearchScreen with OutlinedTextField search bar, mood FilterChips, result count, and MemorySearchResultCard list
+- Text search across title, notes, and placeLabel fields via LIKE queries with MemoryWithDetails
+- Collections shortcut card on search screen linking to CollectionListScreen
+- CollectionListViewModel with reactive collection + memory count loading via combine
+- CollectionListScreen with collection cards (name, description, count), FAB to create, delete with confirmation
+- CreateCollectionDialog with name and optional description fields
+- CollectionDetailViewModel loading collection metadata + memories via SavedStateHandle
+- CollectionDetailScreen with memory list using MemorySearchResultCard, empty state
+- Add-to-collection flow on MemoryDetailScreen: "Add to collection" button in read mode, toggle dialog with checkmarks
+- Navigation routes: CollectionList, CollectionDetail with collectionId argument
+
+### Changed
+- MemoryDetailViewModel: added CollectionRepository injection, collection dialog state, toggle logic
+- MemoryDetailScreen: added CollectionsBookmark button in read mode, AddToCollectionDialog
+- CollectionDao: added getMemoryCountInCollection, getCollectionIdsForMemory, getMemoriesInCollectionWithDetails
+- MemoryDao: added searchMemoriesWithDetails with @Transaction
+- MemlyNavGraph: added CollectionList and CollectionDetail routes
+
+---
+
 ## Phase 1, Section 5: Map View
 **Date:** 2026-03-16
 
