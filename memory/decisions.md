@@ -43,3 +43,6 @@
 | D039 | Flow-based ViewModels skip try/catch (Timeline, Map, Search) | Room flows handle errors internally; adding catch would be dead code for local DB |
 | D040 | Custom app icon deferred to Phase 2 | Default launcher icon sufficient for MVP; proper adaptive icon needs design assets |
 | D041 | Permission rationale dialogs deferred to Phase 2 | Basic permission flow works; advanced rationale + settings link is Phase 2 polish |
+| D042 | Timeline redesigned from LazyColumn list to HorizontalPager with stacked cards | Inspired by travel app UI; more visual, photo-first experience matching memory journal concept |
+| D043 | Stacked card effect via negative pageSpacing + zIndex | Creates depth illusion showing next card behind current; indicates more content without traditional dots |
+| D044 | Nested HorizontalPager for per-card image slideshow | Auto-sliding images within each memory card; only active card runs timer for performance |

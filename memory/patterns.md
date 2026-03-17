@@ -70,12 +70,16 @@
 
 ## Timeline
 
-- `TimelineUiState` contains `groups: List<TimelineGroup>` and `timeHopMemories`
+- `TimelineUiState` contains `allMemories`, `groups: List<TimelineGroup>`, and `timeHopMemories`
 - `TimelineGroup(header, memories)` — date-grouped sections
 - Grouping logic: Today → Yesterday → day name (within week) → "MMMM yyyy" (older)
-- `combine()` merges grouped memories + Time Hop into single UiState
-- Sticky headers use `Surface` with opaque background to prevent text overlap on scroll
+- `combine()` merges all memories + grouped memories + Time Hop into single UiState
 - Time Hop DAO query uses `strftime('%m-%d', ...)` for cross-year date matching
+- Homescreen layout: ProfileHeader → SearchBar → FilterChips → MemoryPager (vertically scrollable)
+- Memory pager uses `HorizontalPager` with stacked card effect (negative pageSpacing, zIndex layering)
+- Each memory card has an auto-sliding image slideshow (nested `HorizontalPager`, `userScrollEnabled = false`)
+- Slideshow only runs on the active/current page (`isActive` flag based on pager state)
+- Slideshow auto-advances every 4s with 600ms slide animation; resets to image 0 on page change
 
 ## Shared Components
 

@@ -4,6 +4,27 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Timeline Homescreen Redesign
+**Date:** 2026-03-17
+
+### Changed
+- Redesigned Timeline/homescreen from vertical LazyColumn to horizontal stacked card pager
+- New layout: ProfileHeader → SearchBar → FilterChips → HorizontalPager
+- Stacked card effect with negative page spacing, zIndex layering, scale/alpha depth
+- Each memory card shows auto-sliding image slideshow (nested HorizontalPager, 4s interval, 600ms slide)
+- Slideshow only plays on the active/current card; stops and resets when swiped away
+- Added circular "next" arrow button on current card
+- Added slideshow indicator dots (top-left) for multi-image memories
+- Static profile header: "Hello, Catt" with avatar and notification bell
+- Search bar placeholder (non-functional, design only)
+- Filter chips: All, Date, Mood (design only, no functionality yet)
+
+### Added
+- `allMemories` field in `TimelineUiState` for flat memory list (pager data source)
+- `MemoryPagerCard` composable with stacked card layout, slideshow, mood chip, "See more" button
+
+---
+
 ## Phase 2, Section 5: Theme & UI Polish
 **Date:** 2026-03-17
 

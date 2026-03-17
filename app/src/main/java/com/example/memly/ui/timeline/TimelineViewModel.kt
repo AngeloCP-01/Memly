@@ -23,6 +23,7 @@ data class TimelineGroup(
 
 data class TimelineUiState(
     val groups: List<TimelineGroup> = emptyList(),
+    val allMemories: List<MemoryWithDetails> = emptyList(),
     val timeHopMemories: List<MemoryWithDetails> = emptyList(),
     val isRefreshing: Boolean = false
 )
@@ -34,17 +35,21 @@ class TimelineViewModel @Inject constructor(
 
     private val todayMillis = System.currentTimeMillis()
 
-    private val groupedMemories = memoryRepository.getAllMemoriesWithDetails()
+    private val allMemoriesFlow = memoryRepository.getAllMemoriesWithDetails()
+
+    private val groupedMemories = allMemoriesFlow
         .map { memories -> groupByDate(memories) }
 
     private val timeHopMemories = memoryRepository.getTimeHopMemories(todayMillis)
 
     val uiState: StateFlow<TimelineUiState> = combine(
+        allMemoriesFlow,
         groupedMemories,
         timeHopMemories
-    ) { groups, timeHop ->
+    ) { all, groups, timeHop ->
         TimelineUiState(
             groups = groups,
+            allMemories = all,
             timeHopMemories = timeHop
         )
     }.stateIn(

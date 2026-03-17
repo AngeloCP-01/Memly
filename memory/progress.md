@@ -25,7 +25,13 @@
 | 6 | Data Management      | NOT STARTED |
 | 7 | Integration & Polish | NOT STARTED |
 
+## Ad-hoc
+
+| # | Task                        | Status      |
+|---|-----------------------------|-------------|
+| 1 | Timeline Homescreen Redesign | COMPLETE    |
+
 ## Current Pointer
 
-- **Last completed:** Phase 2, Section 5 -- Theme & UI Polish (2026-03-17)
+- **Last completed:** Timeline Homescreen Redesign (2026-03-17)
 - **Next:** Phase 2, Section 1 -- Voice Memos (or any other Phase 2 section)
