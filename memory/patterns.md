@@ -76,10 +76,13 @@
 - `combine()` merges all memories + grouped memories + Time Hop into single UiState
 - Time Hop DAO query uses `strftime('%m-%d', ...)` for cross-year date matching
 - Homescreen layout: ProfileHeader → SearchBar → FilterChips → MemoryPager (vertically scrollable)
-- Memory pager uses `HorizontalPager` with stacked card effect (negative pageSpacing, zIndex layering)
+- Memory pager uses `HorizontalPager` with coverflow effect: centered card, side cards rotated on Y-axis
+- Coverflow achieved via `graphicsLayer { rotationY, cameraDistance, scaleX/Y, translationX }` per page offset
+- Side cards: 85% scale, 15deg Y-rotation, 50% alpha, 30px translation — creates 3D perspective peek
 - Each memory card has an auto-sliding image slideshow (nested `HorizontalPager`, `userScrollEnabled = false`)
 - Slideshow only runs on the active/current page (`isActive` flag based on pager state)
 - Slideshow auto-advances every 4s with 600ms slide animation; resets to image 0 on page change
+- Card bottom row: `@location` left + "See more +" frosted glass pill right, in a single `Row` with `SpaceBetween`
 
 ## Shared Components
 

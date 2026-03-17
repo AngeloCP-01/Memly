@@ -4,6 +4,30 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Timeline Card Redesign v2
+**Date:** 2026-03-17
+
+### Changed
+- Redesigned memory pager cards to match new visual reference (coverflow-style)
+- Card height increased from 400dp to 480dp for more immersive feel
+- Title upgraded from `headlineSmall` to `headlineLarge` bold display text
+- Location display changed from pin icon + text to `@location` format
+- "See more" button restyled as frosted glass pill with `+` icon, moved to bottom-right
+- Bottom row layout: `@location` left-aligned, "See more +" button right-aligned
+- Pager changed from stacked overlap to coverflow: centered card with side cards rotated 15 degrees on Y-axis
+- Side cards scale to 85%, fade to 50% opacity, with 3D perspective tilt
+- Removed next arrow button from cards for cleaner design
+- Removed date from card overlay
+- Gradient overlay taller (260dp) with 3-stop softer fade
+- Corner radius increased from 24dp to 28dp
+
+### Removed
+- ChevronRight icon and next button logic
+- Date display from memory pager cards
+- IconButtonDefaults and ButtonDefaults imports (no longer needed)
+
+---
+
 ## Bottom Navigation Bar Redesign
 **Date:** 2026-03-17
 

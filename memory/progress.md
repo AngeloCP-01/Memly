@@ -27,12 +27,13 @@
 
 ## Ad-hoc
 
-| # | Task                        | Status      |
-|---|-----------------------------|-------------|
-| 1 | Timeline Homescreen Redesign | COMPLETE    |
-| 2 | Bottom Nav Bar Redesign      | COMPLETE    |
+| # | Task                            | Status      |
+|---|---------------------------------|-------------|
+| 1 | Timeline Homescreen Redesign    | COMPLETE    |
+| 2 | Bottom Nav Bar Redesign         | COMPLETE    |
+| 3 | Timeline Card Redesign v2       | COMPLETE    |
 
 ## Current Pointer
 
-- **Last completed:** Bottom Nav Bar Redesign (2026-03-17)
+- **Last completed:** Timeline Card Redesign v2 (2026-03-17)
 - **Next:** Phase 2, Section 1 -- Voice Memos (or any other Phase 2 section)

@@ -25,16 +25,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -42,7 +39,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,11 +57,7 @@ import coil3.compose.AsyncImage
 import com.example.memly.data.local.entity.MemoryWithDetails
 import com.example.memly.ui.theme.color
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlin.math.absoluteValue
 
 @Composable
@@ -247,13 +239,12 @@ private fun MemoryPager(
     modifier: Modifier = Modifier
 ) {
     val pagerState = rememberPagerState(pageCount = { memories.size })
-    val coroutineScope = rememberCoroutineScope()
 
-    // Stacked card pager: negative spacing creates overlap, zIndex layers them
+    // Coverflow-style pager: centered card, side cards rotated and peeking
     HorizontalPager(
         state = pagerState,
-        contentPadding = PaddingValues(start = 16.dp, end = 40.dp),
-        pageSpacing = (-24).dp,
+        contentPadding = PaddingValues(horizontal = 40.dp),
+        pageSpacing = 12.dp,
         beyondViewportPageCount = 2,
         modifier = modifier.fillMaxWidth()
     ) { page ->
@@ -268,26 +259,26 @@ private fun MemoryPager(
             memoryWithDetails = memories[page],
             isActive = isActive,
             onClick = { onMemoryClick(memories[page].memory.id) },
-            onNextClick = {
-                if (pagerState.currentPage < memories.size - 1) {
-                    coroutineScope.launch {
-                        pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                    }
-                }
-            },
-            showNextButton = page == pagerState.currentPage && page < memories.size - 1,
             modifier = Modifier
                 .zIndex((10f - pageOffset.absoluteValue))
                 .graphicsLayer {
-                    // Cards behind: scale down slightly and darken
                     val absOffset = pageOffset.absoluteValue.coerceIn(0f, 1f)
-                    val scale = lerp(0.92f, 1f, 1f - absOffset)
+
+                    // Scale down side cards
+                    val scale = lerp(0.85f, 1f, 1f - absOffset)
                     scaleX = scale
                     scaleY = scale
-                    alpha = lerp(0.7f, 1f, 1f - absOffset)
-                    // Lift the front card with shadow
-                    shadowElevation = lerp(0f, 12f, 1f - absOffset)
-                    shape = RoundedCornerShape(24.dp)
+
+                    // Rotate side cards on Y-axis (3D perspective tilt)
+                    cameraDistance = 12f * density
+                    rotationY = lerp(0f, -15f, pageOffset.coerceIn(-1f, 1f))
+
+                    // Push side cards further out
+                    translationX = lerp(0f, 30f, pageOffset.coerceIn(-1f, 1f))
+
+                    alpha = lerp(0.5f, 1f, 1f - absOffset)
+                    shadowElevation = lerp(0f, 16f, 1f - absOffset)
+                    shape = RoundedCornerShape(28.dp)
                     clip = true
                 }
         )
@@ -302,12 +293,9 @@ private fun MemoryPagerCard(
     memoryWithDetails: MemoryWithDetails,
     isActive: Boolean,
     onClick: () -> Unit,
-    onNextClick: () -> Unit,
-    showNextButton: Boolean,
     modifier: Modifier = Modifier
 ) {
     val memory = memoryWithDetails.memory
-    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
     val imagePaths = remember(memoryWithDetails.mediaFiles) {
         memoryWithDetails.mediaFiles.mapNotNull { it.thumbnailPath }
     }
@@ -340,8 +328,8 @@ private fun MemoryPagerCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(400.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .height(480.dp)
+            .clip(RoundedCornerShape(28.dp))
             .clickable(onClick = onClick)
     ) {
         // Background image slideshow or fallback
@@ -381,15 +369,19 @@ private fun MemoryPagerCard(
             )
         }
 
-        // Gradient overlay at bottom
+        // Gradient overlay at bottom — taller and softer
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
+                .height(260.dp)
                 .align(Alignment.BottomCenter)
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.4f),
+                            Color.Black.copy(alpha = 0.75f)
+                        )
                     )
                 )
         )
@@ -435,89 +427,67 @@ private fun MemoryPagerCard(
             }
         }
 
-        // Bottom content: title, location, date
+        // Bottom content: large title, then @location + "See more +" row
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(20.dp)
-                .padding(end = 48.dp)
+                .padding(24.dp)
         ) {
+            // Large display title
             Text(
                 text = memory.title ?: "Untitled Memory",
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.headlineLarge,
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
-                maxLines = 2,
+                maxLines = 3,
+                lineHeight = MaterialTheme.typography.headlineLarge.lineHeight,
                 overflow = TextOverflow.Ellipsis
             )
 
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(14.dp))
 
-            // Location + date row
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                memory.placeLabel?.let { place ->
-                    Icon(
-                        Icons.Default.LocationOn,
-                        contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.8f),
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(Modifier.width(2.dp))
-                    Text(
-                        text = place,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.8f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(Modifier.width(12.dp))
+            // @location (left) + "See more +" button (right) — same row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = memory.placeLabel?.let { "@$it" } ?: "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.75f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+
+                Spacer(Modifier.width(12.dp))
+
+                // "See more +" pill button
+                Surface(
+                    onClick = onClick,
+                    shape = RoundedCornerShape(24.dp),
+                    color = Color.White.copy(alpha = 0.2f)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "See more",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
-                Text(
-                    text = dateFormat.format(Date(memory.memoryDate)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.7f)
-                )
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            // "See more" button
-            Button(
-                onClick = onClick,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = Color.Black
-                ),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 10.dp)
-            ) {
-                Text(
-                    text = "See more",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-
-        // Circular next arrow — bottom right
-        if (showNextButton) {
-            IconButton(
-                onClick = onNextClick,
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = Color.White,
-                    contentColor = Color.Black
-                ),
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp)
-                    .size(44.dp)
-                    .clip(CircleShape)
-            ) {
-                Icon(
-                    Icons.Default.ChevronRight,
-                    contentDescription = "Next memory",
-                    modifier = Modifier.size(28.dp)
-                )
             }
         }
     }

@@ -46,3 +46,6 @@
 | D042 | Timeline redesigned from LazyColumn list to HorizontalPager with stacked cards | Inspired by travel app UI; more visual, photo-first experience matching memory journal concept |
 | D043 | Stacked card effect via negative pageSpacing + zIndex | Creates depth illusion showing next card behind current; indicates more content without traditional dots |
 | D044 | Nested HorizontalPager for per-card image slideshow | Auto-sliding images within each memory card; only active card runs timer for performance |
+| D045 | Coverflow pager replaces stacked overlap effect | 3D Y-rotation on side cards matches reference design; more visual depth than flat stacking |
+| D046 | @location format instead of pin icon | Cleaner, social-media-inspired location display; matches design reference |
+| D047 | Frosted glass "See more +" pill button | Semi-transparent white (0.2 alpha) blends with image; less intrusive than solid white button |
