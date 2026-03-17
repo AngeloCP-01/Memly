@@ -33,3 +33,4 @@
 | D029 | Edit fields stored in UiState alongside read fields | Allows cancel without re-fetching; edit* prefix distinguishes from display values |
 | D030 | Tag updates as individual add/remove (not transactional) | Acceptable for local-only app; can wrap in transaction later if needed |
 | D031 | SavedStateHandle for memoryId in detail ViewModel | Standard Hilt pattern for navigation arguments; survives process death |
+| D032 | osmdroid (OpenStreetMap) over Google Maps for map view | No API key needed, truly offline-capable, aligns with offline-first philosophy; tradeoff is AndroidView wrapper |

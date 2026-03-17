@@ -94,3 +94,14 @@
 - Delete uses Room FK cascade (no manual cleanup of media/tags needed)
 - Photo hero uses `HorizontalPager` with page indicator dots
 - Back button overlaid as semi-transparent circle on image
+
+## Map Screen
+
+- osmdroid `MapView` wrapped in `AndroidView` for Compose integration
+- `Configuration.getInstance().userAgentValue` set to app package name (required by osmdroid)
+- Tile cache stored in `cacheDir/osmdroid/`
+- Custom mood-colored pin markers via `Bitmap` + `Canvas` drawing (circle + triangle pointer)
+- Map auto-centers on average lat/lng of visible memories with adaptive zoom
+- Mood filter chips overlay on top of map with `FlowRow`
+- Preview card slides in from bottom on pin tap using `AnimatedVisibility`
+- `getGeotaggedMemoriesWithDetails()` returns `Flow<List<MemoryWithDetails>>` with `@Transaction`

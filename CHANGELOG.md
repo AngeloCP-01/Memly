@@ -4,6 +4,26 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Phase 1, Section 5: Map View
+**Date:** 2026-03-16
+
+### Added
+- MapViewModel with MapUiState (geotagged memories, selected memory, mood filter)
+- osmdroid (OpenStreetMap) integration via AndroidView wrapper — no API key required
+- Mood-colored map pins with custom BitmapDrawable markers
+- Animated bottom preview card on pin tap with thumbnail, title, date, location, mood chip
+- Mood filter chips overlay for narrowing visible pins
+- Empty state for no geotagged memories
+- Empty state for filtered results with no matches
+- Navigation from preview card to memory detail screen
+- DAO query: getGeotaggedMemoriesWithDetails() for memories with media + tags
+- INTERNET and ACCESS_NETWORK_STATE permissions for tile loading
+
+### Decision
+- D032: osmdroid over Google Maps — no API key, offline-capable, aligns with offline-first philosophy
+
+---
+
 ## Phase 1, Section 4: Memory Detail Screen
 **Date:** 2026-03-16
 

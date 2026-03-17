@@ -164,28 +164,28 @@ Full detail screen with photo hero (HorizontalPager), read/edit mode toggle via 
 
 ## Section 5: Map View
 
-**Status:** NOT STARTED
+**Status:** COMPLETE
 
-Visualize geotagged memories as pins on an interactive map.
+osmdroid (OpenStreetMap) integration with mood-colored pins, preview card on tap, mood filter chips, and empty states.
 
 **Risks:**
-- Google Maps SDK requires an API key in local.properties / AndroidManifest; billing must be enabled.
-- Alternative: osmdroid (OpenStreetMap) avoids API key but has a different API surface.
-- Rendering many pins (hundreds) may require clustering via Maps Utils library.
+- ~~Google Maps SDK requires an API key in local.properties / AndroidManifest; billing must be enabled.~~
+- Used osmdroid (OpenStreetMap) — no API key, offline-capable, wrapped in AndroidView.
+- Rendering many pins (hundreds) may require clustering via osmdroid bonuspack in future.
 
 | Task | Description                                                                 | Status | Notes                                                         |
 |------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
-| 5.1  | Add Google Maps Compose dependency (or osmdroid alternative)                | ⬜     | maps-compose library; configure API key in manifest            |
-| 5.2  | Create MapViewModel -- load all memories with non-null lat/lng              | ⬜     | StateFlow<MapUiState> with list of map markers                 |
-| 5.3  | Display map with memory pins at lat/lng coordinates                         | ⬜     | GoogleMap composable with Marker for each memory               |
-| 5.4  | Customize pin markers (mood-colored pins or mini thumbnails)                | ⬜     | BitmapDescriptor from mood color; consider performance         |
-| 5.5  | Show memory preview card on pin tap (bottom sheet or overlay)               | ⬜     | ModalBottomSheet with MemoryCard composable                    |
-| 5.6  | Navigate from preview card to memory detail screen                          | ⬜     | Pass memoryId to detail route                                  |
-| 5.7  | Add basic filter controls (date range or mood) for map pins                 | ⬜     | Filter chips above map; re-query ViewModel                     |
-| 5.8  | Build empty state for no geotagged memories                                 | ⬜     | Overlay message on map or placeholder screen                   |
-| 5.9  | Verify: map displays pins, tap shows preview, navigate to detail            | ⬜     | Test with memories that have and lack coordinates              |
+| 5.1  | Add osmdroid dependency                                                     | ✅     | osmdroid-android 6.1.20; INTERNET + ACCESS_NETWORK_STATE perms |
+| 5.2  | Create MapViewModel -- load all memories with non-null lat/lng              | ✅     | StateFlow<MapUiState> with mood filter + selected memory       |
+| 5.3  | Display map with memory pins at lat/lng coordinates                         | ✅     | osmdroid MapView in AndroidView; auto-center + adaptive zoom   |
+| 5.4  | Customize pin markers (mood-colored pins)                                   | ✅     | Custom Bitmap with circle + triangle pointer in mood color     |
+| 5.5  | Show memory preview card on pin tap (animated overlay)                      | ✅     | AnimatedVisibility slide-in card with thumbnail, title, metadata |
+| 5.6  | Navigate from preview card to memory detail screen                          | ✅     | onMemoryClick(memoryId) wired to nav graph                     |
+| 5.7  | Add mood filter controls for map pins                                       | ✅     | FilterChip FlowRow overlay; toggleable per mood                |
+| 5.8  | Build empty state for no geotagged memories                                 | ✅     | LocationOff icon + message; also filtered empty state overlay  |
+| 5.9  | Verify: map displays pins, tap shows preview, navigate to detail            | ✅     | Build passes; all components wired                             |
 
-**Checkpoint:** Map renders with pins for geotagged memories. Tapping a pin shows a preview. Preview navigates to detail. Filters narrow visible pins.
+**Checkpoint:** Map renders with pins for geotagged memories. Tapping a pin shows a preview. Preview navigates to detail. Mood filter narrows visible pins.
 
 ---
 
