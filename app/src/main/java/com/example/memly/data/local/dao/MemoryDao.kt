@@ -53,6 +53,10 @@ interface MemoryDao {
     fun getGeotaggedMemories(): Flow<List<MemoryEntity>>
 
     @Transaction
+    @Query("SELECT * FROM memories WHERE latitude IS NOT NULL AND longitude IS NOT NULL ORDER BY memoryDate DESC")
+    fun getGeotaggedMemoriesWithDetails(): Flow<List<MemoryWithDetails>>
+
+    @Transaction
     @Query("""
         SELECT * FROM memories
         WHERE strftime('%m-%d', memoryDate / 1000, 'unixepoch', 'localtime') = strftime('%m-%d', :todayMillis / 1000, 'unixepoch', 'localtime')

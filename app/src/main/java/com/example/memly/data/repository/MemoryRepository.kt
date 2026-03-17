@@ -47,6 +47,9 @@ class MemoryRepository @Inject constructor(
     fun getGeotaggedMemories(): Flow<List<MemoryEntity>> =
         memoryDao.getGeotaggedMemories()
 
+    fun getGeotaggedMemoriesWithDetails(): Flow<List<MemoryWithDetails>> =
+        memoryDao.getGeotaggedMemoriesWithDetails()
+
     // Media files
     suspend fun addMediaFile(mediaFile: MediaFileEntity): Long =
         memoryDao.insertMediaFile(mediaFile)

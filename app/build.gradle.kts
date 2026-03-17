@@ -74,6 +74,9 @@ dependencies {
     // Location
     implementation(libs.play.services.location)
 
+    // Map (osmdroid)
+    implementation(libs.osmdroid)
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
