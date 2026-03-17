@@ -40,3 +40,6 @@
 | D036 | SettingsViewModel injects MemlyDatabase + MemoryDao directly (not via repository) | Settings needs clearAllTables() and count queries; no repository abstraction needed for these |
 | D037 | Settings accessible from Search screen shortcut (not bottom nav tab) | Keeps bottom nav focused on core actions (Timeline, Map, Search); settings is secondary |
 | D038 | Double confirmation for clear-all-data | Prevents accidental data loss; second dialog shows exact counts for informed decision |
+| D039 | Flow-based ViewModels skip try/catch (Timeline, Map, Search) | Room flows handle errors internally; adding catch would be dead code for local DB |
+| D040 | Custom app icon deferred to Phase 2 | Default launcher icon sufficient for MVP; proper adaptive icon needs design assets |
+| D041 | Permission rationale dialogs deferred to Phase 2 | Basic permission flow works; advanced rationale + settings link is Phase 2 polish |

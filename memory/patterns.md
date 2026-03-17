@@ -131,3 +131,12 @@
 - Double confirmation pattern: first dialog warns, second shows exact counts and requires explicit "Delete Everything"
 - `BuildConfig.VERSION_NAME` and `VERSION_CODE` accessed after enabling `buildFeatures { buildConfig = true }`
 - Settings accessible via shortcut card on Search screen (same pattern as Collections shortcut)
+
+## Error Handling Pattern
+
+- All ViewModels with suspend operations wrap them in `try/catch`
+- Error exposed as `error: String?` field in UiState
+- Screens display errors via `LaunchedEffect(uiState.error)` + `SnackbarHostState.showSnackbar()`
+- After showing, call `viewModel.clearError()` to reset
+- Flow-based ViewModels (Timeline, Map, Search) rely on Room's internal error handling — Room flows don't throw
+- CaptureViewModel is the exemplar: has error, loading, validation, and file I/O error handling

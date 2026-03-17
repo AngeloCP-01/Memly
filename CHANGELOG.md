@@ -4,6 +4,29 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Phase 1, Section 8: Integration & Polish
+**Date:** 2026-03-17
+
+### Fixed
+- Added try/catch error handling to all ViewModels with suspend operations (Detail, CollectionList, CollectionDetail, Settings)
+- Added error fields and Snackbar display to CollectionListScreen and SettingsScreen
+- Fixed lint error: added `<uses-feature>` for camera hardware (ChromeOS compatibility)
+- Fixed DefaultLocale warning in CaptureScreen (use Locale.ROOT for coordinate formatting)
+- Removed unused template colors from colors.xml (purple, teal, black, white)
+- Removed redundant activity label from AndroidManifest.xml
+
+### Changed
+- Removed unused `isLoading` field from SearchUiState (was always false)
+- All ViewModels now have consistent error handling pattern
+
+### Verified
+- Lint passes with 0 errors (remaining warnings are dependency version suggestions)
+- Back navigation works on all screens (no orphan routes)
+- Empty states present on: Timeline, Map, Search, CollectionList, CollectionDetail
+- Loading indicators present on: Detail, Map, CollectionList, CollectionDetail, Settings
+
+---
+
 ## Phase 1, Section 7: Settings & Profile
 **Date:** 2026-03-17
 
