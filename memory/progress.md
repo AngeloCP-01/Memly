@@ -30,8 +30,9 @@
 | # | Task                        | Status      |
 |---|-----------------------------|-------------|
 | 1 | Timeline Homescreen Redesign | COMPLETE    |
+| 2 | Bottom Nav Bar Redesign      | COMPLETE    |
 
 ## Current Pointer
 
-- **Last completed:** Timeline Homescreen Redesign (2026-03-17)
+- **Last completed:** Bottom Nav Bar Redesign (2026-03-17)
 - **Next:** Phase 2, Section 1 -- Voice Memos (or any other Phase 2 section)

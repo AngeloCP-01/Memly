@@ -86,6 +86,7 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
+                .padding(bottom = 80.dp)
         ) {
             // About section
             SectionHeader("About")

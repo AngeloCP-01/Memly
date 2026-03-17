@@ -4,6 +4,24 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Bottom Navigation Bar Redesign
+**Date:** 2026-03-17
+
+### Changed
+- Replaced standard Material 3 NavigationBar with custom floating pill-shaped bottom nav bar
+- Dark rounded pill background using MaterialTheme.colorScheme tokens (adapts to light/dark theme)
+- Icon-only nav items with white circular indicator on selected item
+- Updated nav items from 3 (Timeline, Map, Search) to 4 (Home, Collections, Favorites, Settings)
+- Removed standalone FAB; integrated center add button directly into the bottom bar
+- Bottom bar overlays content via Box instead of Scaffold bottomBar slot (floating effect)
+
+### Added
+- `MemlyBottomNavBar` composable in `ui/components/` with theme-aware colors
+- Center "Add Memory" button with tertiary color accent
+- Bottom padding (80dp) on SearchScreen, CollectionListScreen, SettingsScreen to prevent content clipping
+
+---
+
 ## Timeline Homescreen Redesign
 **Date:** 2026-03-17
 
