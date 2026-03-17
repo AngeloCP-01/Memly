@@ -32,8 +32,9 @@
 | 1 | Timeline Homescreen Redesign    | COMPLETE    |
 | 2 | Bottom Nav Bar Redesign         | COMPLETE    |
 | 3 | Timeline Card Redesign v2       | COMPLETE    |
+| 4 | Navigation & Screen Redesign    | COMPLETE    |
 
 ## Current Pointer
 
-- **Last completed:** Timeline Card Redesign v2 (2026-03-17)
+- **Last completed:** Navigation & Screen Redesign (2026-03-17) — Bottom nav overhaul (Map + Settings icons), Search screen removed, functional search + filter on Timeline & Collections, Settings/Collections redesigned as top-level nav destinations
 - **Next:** Phase 2, Section 1 -- Voice Memos (or any other Phase 2 section)

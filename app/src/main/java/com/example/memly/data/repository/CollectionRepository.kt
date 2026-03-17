@@ -16,6 +16,9 @@ class CollectionRepository @Inject constructor(
     fun getAllCollections(): Flow<List<CollectionEntity>> =
         collectionDao.getAllCollections()
 
+    fun searchCollections(query: String): Flow<List<CollectionEntity>> =
+        collectionDao.searchCollections(query)
+
     suspend fun getCollectionById(collectionId: Long): CollectionEntity? =
         collectionDao.getCollectionById(collectionId)
 

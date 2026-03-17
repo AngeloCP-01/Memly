@@ -9,7 +9,7 @@ It contains everything Claude needs to work on the Memly project autonomously.
 
 **App:** Memly -- offline-first Android personal memory journal
 **Package:** `com.example.memly`
-**Current State:** Phase 2 in progress. Section 5 (Theme & UI Polish) complete. Sections 1-4, 6-7 remaining.
+**Current State:** Phase 2 in progress. Section 5 (Theme & UI Polish) complete. Sections 1-4, 6-7 remaining. Major UI redesign complete: nav bar overhauled (Home/Collections/Map/Settings), Search screen removed (inline search on Timeline + Collections), all screens redesigned with consistent card-based design language.
 **Scope:** 6 phases, ~300 tasks total. Free, no ads, no accounts, 100% offline (Phase 4 adds optional cloud sync).
 
 ## Tech Stack
@@ -66,9 +66,8 @@ app/src/main/java/com/example/memly/
 │   ├── navigation/      (Screen, MemlyNavGraph)
 │   ├── timeline/        (TimelineScreen, TimelineViewModel)
 │   ├── map/             (MapScreen placeholder)
-│   ├── capture/         (CaptureScreen placeholder)
-│   ├── search/          (SearchScreen placeholder)
-│   ├── detail/          (MemoryDetailScreen placeholder)
+│   ├── capture/         (CaptureScreen)
+│   ├── detail/          (MemoryDetailScreen)
 │   └── components/      (shared composables)
 ├── di/                  (DatabaseModule)
 ├── util/                (FileHashUtil, ThumbnailUtil)

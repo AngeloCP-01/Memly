@@ -28,6 +28,9 @@ interface CollectionDao {
     @Query("SELECT * FROM collections ORDER BY createdAt DESC")
     fun getAllCollections(): Flow<List<CollectionEntity>>
 
+    @Query("SELECT * FROM collections WHERE name LIKE '%' || :query || '%' OR description LIKE '%' || :query || '%' ORDER BY createdAt DESC")
+    fun searchCollections(query: String): Flow<List<CollectionEntity>>
+
     @Query("SELECT * FROM collections WHERE id = :collectionId")
     suspend fun getCollectionById(collectionId: Long): CollectionEntity?
 

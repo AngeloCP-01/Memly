@@ -10,8 +10,10 @@
 ## Navigation
 
 - `Screen` sealed class with string route properties
-- Bottom nav shown on main tabs (Timeline, Map, Search)
-- Bottom nav hidden on full-screen routes (Detail, Capture, Settings)
+- Bottom nav shown on main tabs (Timeline, Collections, Map, Settings)
+- Bottom nav hidden on full-screen routes (Detail, Capture)
+- `Screen.Search` removed — search is inline on Timeline and Collections screens
+- Top-level nav destinations use custom headers (no TopAppBar/back arrow); only sub-screens use back navigation
 
 ## Data Layer
 
@@ -75,7 +77,7 @@
 - Grouping logic: Today → Yesterday → day name (within week) → "MMMM yyyy" (older)
 - `combine()` merges all memories + grouped memories + Time Hop into single UiState
 - Time Hop DAO query uses `strftime('%m-%d', ...)` for cross-year date matching
-- Homescreen layout: ProfileHeader → SearchBar → FilterChips → MemoryPager (vertically scrollable)
+- Homescreen layout: ProfileHeader → SearchBar+FilterIcon → ActiveFilterChips → MemoryPager (vertically scrollable)
 - Memory pager uses `HorizontalPager` with coverflow effect: centered card, side cards rotated on Y-axis
 - Coverflow achieved via `graphicsLayer { rotationY, cameraDistance, scaleX/Y, translationX }` per page offset
 - Side cards: 85% scale, 15deg Y-rotation, 50% alpha, 30px translation — creates 3D perspective peek
@@ -113,16 +115,27 @@
 - Preview card slides in from bottom on pin tap using `AnimatedVisibility`
 - `getGeotaggedMemoriesWithDetails()` returns `Flow<List<MemoryWithDetails>>` with `@Transaction`
 
-## Search Screen
+## Inline Search & Filter (Timeline)
 
-- `SearchViewModel` uses `debounce(300)` + `flatMapLatest` for reactive search
-- Empty query returns `flowOf(emptyList())` to avoid unnecessary DB queries
-- Mood filter applied in `combine` on top of search results (client-side filtering)
-- Collections shortcut card on search screen links to `CollectionListScreen`
-- Results displayed with `MemorySearchResultCard` in `LazyColumn` with keyed items
+- Search integrated into Timeline screen via `BasicTextField` inside styled `Surface` (no separate search screen)
+- `TimelineViewModel` uses `debounce(300)` + `flatMapLatest` for reactive search against `searchMemoriesWithDetails()`
+- Multi-select mood filter: `Set<Mood>` toggled via `toggleMoodFilter(mood)`; client-side filtering in `combine`
+- Date filter: specific day via Material 3 `DatePickerDialog`; filtered with `isSameDay()` comparison
+- Filter icon button next to search bar; turns primary-colored when filters active
+- Active filter chips shown below search bar (horizontally scrollable): mood chips with color + X, date chip with calendar icon + X
+- `DropdownMenu` with two sections: "Filter by Date" (date picker trigger) and "Filter by Mood" (submenu with checkmarks + Done button)
+- Search results replace the memory pager content (same coverflow pager, not a separate list)
+
+## Inline Search (Collections)
+
+- `CollectionListViewModel` uses `debounce(300)` + `flatMapLatest` switching between `getAllCollections()` and `searchCollections(query)`
+- `CollectionDao.searchCollections()` uses LIKE query matching name and description
+- Search bar styled identically to Timeline search bar (`BasicTextField` + `Surface`)
 
 ## Collections
 
+- `CollectionListScreen` is a top-level nav destination (no back arrow); uses custom header with icon + title + create button
+- Collection cards use `RoundedCornerShape(20.dp)`, `surfaceContainerHigh` color, icon in `primaryContainer` circle
 - `CollectionListViewModel` uses `flatMapLatest` + `combine` to merge collection list with per-collection memory counts
 - `CollectionDetailViewModel` loads via `SavedStateHandle["collectionId"]`
 - Add-to-collection flow lives on `MemoryDetailScreen` — toggle dialog with checkmarks
@@ -132,12 +145,13 @@
 
 ## Settings Screen
 
+- `SettingsScreen` is a top-level nav destination (no back arrow); uses custom header with gear icon + title
+- Cards use `RoundedCornerShape(20.dp)` and `surfaceContainerHigh` matching other redesigned screens
 - `SettingsViewModel` injects `@ApplicationContext Context`, `MemlyDatabase`, and `MemoryDao` directly
 - Storage stats loaded on `Dispatchers.IO` via `withContext`; disk usage calculated with `File.walkTopDown()`
 - `database.clearAllTables()` for Room data wipe; `File.deleteRecursively()` for media + thumbnails
 - Double confirmation pattern: first dialog warns, second shows exact counts and requires explicit "Delete Everything"
 - `BuildConfig.VERSION_NAME` and `VERSION_CODE` accessed after enabling `buildFeatures { buildConfig = true }`
-- Settings accessible via shortcut card on Search screen (same pattern as Collections shortcut)
 
 ## Error Handling Pattern
 

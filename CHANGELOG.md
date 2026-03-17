@@ -4,6 +4,43 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Navigation & Screen Redesign
+**Date:** 2026-03-17
+
+### Changed
+- Bottom nav items: replaced Favorites (heart) with Map icon, replaced GridView (boxes) with Settings (gear) icon
+- Bottom nav tabs are now: Home, Collections, +Add, Map, Settings
+- CollectionListScreen redesigned as top-level nav destination: removed TopAppBar/back arrow, added custom header with icon + title + create button, redesigned collection cards with 20dp corners and surfaceContainerHigh color, added search bar for collections
+- SettingsScreen redesigned as top-level nav destination: removed TopAppBar/back arrow, added custom header with gear icon, cards updated to match new design language
+- Timeline search bar is now functional: BasicTextField with live filtering via debounced search
+- Timeline filters replaced: removed static FilterChips row, added filter icon button next to search bar with dropdown menu
+- Mood filter is now multi-select (Set<Mood>) with toggle checkmarks and "Done" button
+- Date filter changed from sort order to specific day picker via Material 3 DatePickerDialog
+- Active filter chips shown below search bar (horizontally scrollable) with dismiss buttons
+- Search results display in the same coverflow pager as regular memories (no separate results view)
+- MemlyNavGraph: removed onNavigateBack from CollectionList and Settings composables
+
+### Added
+- `CollectionDao.searchCollections()` — LIKE query matching name and description
+- `CollectionRepository.searchCollections()` — exposed to ViewModels
+- `CollectionListViewModel` search query with debounce(300) switching between all/search
+- `CollectionSearchBar` composable on Collections screen
+- `TimelineViewModel` multi-mood filter (Set<Mood>), date filter (Long?), toggleMoodFilter(), clearMoodFilters()
+- `SearchBarWithFilter` composable with filter icon, dropdown menu, mood submenu, date picker
+- `ActiveFilterChips` composable with mood-colored chips and date chip
+- Empty states for "no search results" on both Timeline and Collections screens
+
+### Removed
+- `ui/search/SearchScreen.kt` — entire Search screen deleted
+- `ui/search/SearchViewModel.kt` — entire Search ViewModel deleted
+- `Screen.Search` from navigation sealed class
+- Search route from MemlyNavGraph
+- `DateSort` enum (replaced by specific date filter)
+- `FilterChips` composable from Timeline screen
+- `onNavigateBack` parameter from CollectionListScreen and SettingsScreen
+
+---
+
 ## Timeline Card Redesign v2
 **Date:** 2026-03-17
 

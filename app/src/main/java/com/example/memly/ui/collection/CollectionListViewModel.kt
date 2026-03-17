@@ -6,10 +6,12 @@ import com.example.memly.data.local.entity.CollectionEntity
 import com.example.memly.data.repository.CollectionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -27,16 +29,19 @@ data class CollectionListUiState(
     val isLoading: Boolean = true,
     val showCreateDialog: Boolean = false,
     val showDeleteDialog: CollectionEntity? = null,
-    val error: String? = null
+    val error: String? = null,
+    val searchQuery: String = "",
+    val isSearching: Boolean = false
 )
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @HiltViewModel
 class CollectionListViewModel @Inject constructor(
     private val collectionRepository: CollectionRepository
 ) : ViewModel() {
 
     private val _dialogState = MutableStateFlow(DialogState())
+    private val _searchQuery = MutableStateFlow("")
 
     private data class DialogState(
         val showCreateDialog: Boolean = false,
@@ -44,8 +49,18 @@ class CollectionListViewModel @Inject constructor(
         val error: String? = null
     )
 
+    private val debouncedQuery = _searchQuery.debounce(300)
+
+    private val collectionsFlow = debouncedQuery.flatMapLatest { query ->
+        if (query.isBlank()) {
+            collectionRepository.getAllCollections()
+        } else {
+            collectionRepository.searchCollections(query)
+        }
+    }
+
     val uiState: StateFlow<CollectionListUiState> = combine(
-        collectionRepository.getAllCollections().flatMapLatest { collections ->
+        collectionsFlow.flatMapLatest { collections ->
             if (collections.isEmpty()) {
                 flowOf(emptyList())
             } else {
@@ -59,16 +74,27 @@ class CollectionListViewModel @Inject constructor(
                 }
             }
         },
-        _dialogState
-    ) { collectionsWithCounts, dialogState ->
+        _dialogState,
+        _searchQuery
+    ) { collectionsWithCounts, dialogState, query ->
         CollectionListUiState(
             collections = collectionsWithCounts,
             isLoading = false,
             showCreateDialog = dialogState.showCreateDialog,
             showDeleteDialog = dialogState.showDeleteDialog,
-            error = dialogState.error
+            error = dialogState.error,
+            searchQuery = query,
+            isSearching = query.isNotBlank()
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CollectionListUiState())
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun clearSearch() {
+        _searchQuery.value = ""
+    }
 
     fun showCreateDialog() {
         _dialogState.update { it.copy(showCreateDialog = true) }

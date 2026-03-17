@@ -12,7 +12,6 @@ import com.example.memly.ui.collection.CollectionDetailScreen
 import com.example.memly.ui.collection.CollectionListScreen
 import com.example.memly.ui.detail.MemoryDetailScreen
 import com.example.memly.ui.map.MapScreen
-import com.example.memly.ui.search.SearchScreen
 import com.example.memly.ui.settings.SettingsScreen
 import com.example.memly.ui.timeline.TimelineScreen
 
@@ -45,24 +44,8 @@ fun MemlyNavGraph(
             )
         }
 
-        composable(Screen.Search.route) {
-            SearchScreen(
-                onMemoryClick = { memoryId ->
-                    navController.navigate(Screen.MemoryDetail.createRoute(memoryId))
-                },
-                onCollectionsClick = {
-                    navController.navigate(Screen.CollectionList.route)
-                },
-                onSettingsClick = {
-                    navController.navigate(Screen.Settings.route)
-                }
-            )
-        }
-
         composable(Screen.Settings.route) {
-            SettingsScreen(
-                onNavigateBack = { navController.popBackStack() }
-            )
+            SettingsScreen()
         }
 
         composable(Screen.Capture.route) {
@@ -88,8 +71,7 @@ fun MemlyNavGraph(
             CollectionListScreen(
                 onCollectionClick = { collectionId ->
                     navController.navigate(Screen.CollectionDetail.createRoute(collectionId))
-                },
-                onNavigateBack = { navController.popBackStack() }
+                }
             )
         }
 

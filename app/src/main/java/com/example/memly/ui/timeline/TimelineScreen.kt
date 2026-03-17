@@ -2,8 +2,8 @@ package com.example.memly.ui.timeline
 
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,34 +16,48 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material3.Button
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -55,9 +69,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.example.memly.data.local.entity.MemoryWithDetails
+import com.example.memly.data.local.entity.Mood
 import com.example.memly.ui.theme.color
 import kotlinx.coroutines.delay
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.math.absoluteValue
 
 @Composable
@@ -76,38 +94,80 @@ fun TimelineScreen(
             .verticalScroll(rememberScrollState())
             .padding(bottom = 80.dp)
     ) {
-        // -- Profile Header --
         ProfileHeader()
 
         Spacer(Modifier.height(20.dp))
 
-        // -- Search Bar --
-        SearchBar(
+        SearchBarWithFilter(
+            query = state.searchQuery,
+            onQueryChange = viewModel::updateSearchQuery,
+            onClear = viewModel::clearSearch,
+            moodFilters = state.moodFilters,
+            dateFilter = state.dateFilter,
+            onToggleMood = viewModel::toggleMoodFilter,
+            onClearMoods = viewModel::clearMoodFilters,
+            onDateSelected = viewModel::setDateFilter,
             modifier = Modifier.padding(horizontal = 20.dp)
         )
 
-        Spacer(Modifier.height(16.dp))
-
-        // -- Filter Chips --
-        FilterChips(
-            modifier = Modifier.padding(start = 20.dp)
-        )
+        // Active filter chips
+        if (state.moodFilters.isNotEmpty() || state.dateFilter != null) {
+            Spacer(Modifier.height(10.dp))
+            ActiveFilterChips(
+                moodFilters = state.moodFilters,
+                dateFilter = state.dateFilter,
+                onRemoveMood = viewModel::toggleMoodFilter,
+                onClearDate = { viewModel.setDateFilter(null) },
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
+        }
 
         Spacer(Modifier.height(24.dp))
 
-        // -- Memories Section --
+        // Memories section
         if (isEmpty) {
             EmptyTimelineState(onCaptureClick = onCaptureClick)
+        } else if (state.displayMemories.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "No memories found",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Try a different search or filter",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         } else {
             Text(
-                text = "Your Memories",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                text = if (state.isFiltering) "${state.displayMemories.size} result${if (state.displayMemories.size != 1) "s" else ""}"
+                else "Your Memories",
+                style = if (state.isFiltering) MaterialTheme.typography.labelMedium
+                else MaterialTheme.typography.titleLarge,
+                fontWeight = if (state.isFiltering) FontWeight.Normal else FontWeight.Bold,
+                color = if (state.isFiltering) MaterialTheme.colorScheme.onSurfaceVariant
+                else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(horizontal = 20.dp)
             )
             Spacer(Modifier.height(16.dp))
             MemoryPager(
-                memories = state.allMemories,
+                memories = state.displayMemories,
                 onMemoryClick = onMemoryClick
             )
         }
@@ -122,7 +182,6 @@ private fun ProfileHeader(modifier: Modifier = Modifier) {
             .padding(start = 20.dp, end = 12.dp, top = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Avatar
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.primaryContainer,
@@ -138,7 +197,6 @@ private fun ProfileHeader(modifier: Modifier = Modifier) {
 
         Spacer(Modifier.width(12.dp))
 
-        // Greeting text
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "Hello, Catt",
@@ -152,7 +210,6 @@ private fun ProfileHeader(modifier: Modifier = Modifier) {
             )
         }
 
-        // Notification bell
         IconButton(onClick = { /* no-op */ }) {
             Icon(
                 Icons.Default.Notifications,
@@ -163,70 +220,363 @@ private fun ProfileHeader(modifier: Modifier = Modifier) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SearchBar(modifier: Modifier = Modifier) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        modifier = modifier
-            .fillMaxWidth()
-            .height(52.dp)
+private fun SearchBarWithFilter(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClear: () -> Unit,
+    moodFilters: Set<Mood>,
+    dateFilter: Long?,
+    onToggleMood: (Mood) -> Unit,
+    onClearMoods: () -> Unit,
+    onDateSelected: (Long?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var showFilterMenu by remember { mutableStateOf(false) }
+    var showMoodSubmenu by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val hasActiveFilter = moodFilters.isNotEmpty() || dateFilter != null
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Row(
+        // Search field
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .weight(1f)
+                .height(52.dp)
         ) {
-            Icon(
-                Icons.Default.Search,
-                contentDescription = "Search",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(22.dp)
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = "Search",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = "Search",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Box(modifier = Modifier.weight(1f)) {
+                    if (query.isEmpty()) {
+                        Text(
+                            text = "Search memories...",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    BasicTextField(
+                        value = query,
+                        onValueChange = onQueryChange,
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                if (query.isNotEmpty()) {
+                    IconButton(
+                        onClick = onClear,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Clear",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Filter button
+        Box {
+            Surface(
+                onClick = { showFilterMenu = true },
+                shape = RoundedCornerShape(16.dp),
+                color = if (hasActiveFilter) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.size(52.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Outlined.FilterList,
+                        contentDescription = "Filter",
+                        tint = if (hasActiveFilter) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+
+            // Main filter menu
+            DropdownMenu(
+                expanded = showFilterMenu && !showMoodSubmenu,
+                onDismissRequest = { showFilterMenu = false }
+            ) {
+                // Date filter
+                Text(
+                    text = "Filter by Date",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+                DropdownMenuItem(
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.CalendarMonth,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                if (dateFilter != null) {
+                                    val fmt = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
+                                    fmt.format(Date(dateFilter))
+                                } else "Pick a date..."
+                            )
+                        }
+                    },
+                    onClick = {
+                        showFilterMenu = false
+                        showDatePicker = true
+                    }
+                )
+                if (dateFilter != null) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "Clear date filter",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        onClick = {
+                            onDateSelected(null)
+                            showFilterMenu = false
+                        }
+                    )
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                // Mood filter
+                Text(
+                    text = "Filter by Mood",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+                if (moodFilters.isNotEmpty()) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "Clear all moods",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        onClick = {
+                            onClearMoods()
+                            showFilterMenu = false
+                        }
+                    )
+                }
+                DropdownMenuItem(
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                if (moodFilters.isEmpty()) "Select moods..."
+                                else "${moodFilters.size} selected"
+                            )
+                        }
+                    },
+                    onClick = { showMoodSubmenu = true }
+                )
+            }
+
+            // Mood submenu — multi-select
+            DropdownMenu(
+                expanded = showMoodSubmenu,
+                onDismissRequest = {
+                    showMoodSubmenu = false
+                    showFilterMenu = false
+                }
+            ) {
+                Mood.entries.forEach { mood ->
+                    val isSelected = mood in moodFilters
+                    DropdownMenuItem(
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .clip(CircleShape)
+                                        .background(mood.color())
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    text = mood.label,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                if (isSelected) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        },
+                        onClick = { onToggleMood(mood) }
+                    )
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                // Done button to close
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            "Done",
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    onClick = {
+                        showMoodSubmenu = false
+                        showFilterMenu = false
+                    }
+                )
+            }
+        }
+    }
+
+    // Date picker dialog
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = dateFilter
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { onDateSelected(it) }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 }
 
 @Composable
-private fun FilterChips(modifier: Modifier = Modifier) {
-    val filters = listOf("All", "Date", "Mood")
-
-    LazyRow(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(end = 20.dp)
+private fun ActiveFilterChips(
+    moodFilters: Set<Mood>,
+    dateFilter: Long?,
+    onRemoveMood: (Mood) -> Unit,
+    onClearDate: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(filters) { label ->
-            val isSelected = label == "All"
+        // Date chip
+        if (dateFilter != null) {
+            val dateText = remember(dateFilter) {
+                SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(dateFilter))
+            }
             Surface(
-                shape = RoundedCornerShape(24.dp),
-                color = if (isSelected) MaterialTheme.colorScheme.onSurface
-                else Color.Transparent,
-                modifier = Modifier
-                    .then(
-                        if (!isSelected) Modifier.border(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.outline,
-                            shape = RoundedCornerShape(24.dp)
-                        ) else Modifier
-                    )
-                    .clickable { /* no-op for now */ }
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.primaryContainer
             ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = if (isSelected) MaterialTheme.colorScheme.surface
-                    else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp)
+                ) {
+                    Icon(
+                        Icons.Default.CalendarMonth,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = dateText,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    IconButton(
+                        onClick = onClearDate,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Remove date filter",
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+            }
+        }
+
+        // Mood chips
+        moodFilters.forEach { mood ->
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = mood.color().copy(alpha = 0.15f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(mood.color())
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = mood.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = mood.color()
+                    )
+                    IconButton(
+                        onClick = { onRemoveMood(mood) },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Remove ${mood.label} filter",
+                            modifier = Modifier.size(14.dp),
+                            tint = mood.color()
+                        )
+                    }
+                }
             }
         }
     }
@@ -240,7 +590,6 @@ private fun MemoryPager(
 ) {
     val pagerState = rememberPagerState(pageCount = { memories.size })
 
-    // Coverflow-style pager: centered card, side cards rotated and peeking
     HorizontalPager(
         state = pagerState,
         contentPadding = PaddingValues(horizontal = 40.dp),
@@ -264,16 +613,13 @@ private fun MemoryPager(
                 .graphicsLayer {
                     val absOffset = pageOffset.absoluteValue.coerceIn(0f, 1f)
 
-                    // Scale down side cards
                     val scale = lerp(0.85f, 1f, 1f - absOffset)
                     scaleX = scale
                     scaleY = scale
 
-                    // Rotate side cards on Y-axis (3D perspective tilt)
                     cameraDistance = 12f * density
                     rotationY = lerp(0f, -15f, pageOffset.coerceIn(-1f, 1f))
 
-                    // Push side cards further out
                     translationX = lerp(0f, 30f, pageOffset.coerceIn(-1f, 1f))
 
                     alpha = lerp(0.5f, 1f, 1f - absOffset)
@@ -301,17 +647,14 @@ private fun MemoryPagerCard(
     }
     val hasImages = imagePaths.isNotEmpty()
 
-    // Inner pager state for sliding between images
     val slideshowState = rememberPagerState(pageCount = { imagePaths.size.coerceAtLeast(1) })
 
-    // Reset to first image when this card becomes active
     LaunchedEffect(isActive) {
         if (isActive && slideshowState.currentPage != 0) {
             slideshowState.scrollToPage(0)
         }
     }
 
-    // Auto-advance timer — only runs when active and has multiple images
     LaunchedEffect(isActive, imagePaths.size) {
         if (isActive && imagePaths.size > 1) {
             while (true) {
@@ -332,7 +675,6 @@ private fun MemoryPagerCard(
             .clip(RoundedCornerShape(28.dp))
             .clickable(onClick = onClick)
     ) {
-        // Background image slideshow or fallback
         if (hasImages) {
             HorizontalPager(
                 state = slideshowState,
@@ -369,7 +711,6 @@ private fun MemoryPagerCard(
             )
         }
 
-        // Gradient overlay at bottom — taller and softer
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -386,7 +727,6 @@ private fun MemoryPagerCard(
                 )
         )
 
-        // Slideshow indicator dots — top left
         if (hasImages && imagePaths.size > 1) {
             Row(
                 modifier = Modifier
@@ -408,7 +748,6 @@ private fun MemoryPagerCard(
             }
         }
 
-        // Mood chip — top right
         memory.mood?.let { mood ->
             Surface(
                 color = mood.color(),
@@ -427,13 +766,11 @@ private fun MemoryPagerCard(
             }
         }
 
-        // Bottom content: large title, then @location + "See more +" row
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(24.dp)
         ) {
-            // Large display title
             Text(
                 text = memory.title ?: "Untitled Memory",
                 style = MaterialTheme.typography.headlineLarge,
@@ -446,7 +783,6 @@ private fun MemoryPagerCard(
 
             Spacer(Modifier.height(14.dp))
 
-            // @location (left) + "See more +" button (right) — same row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -463,7 +799,6 @@ private fun MemoryPagerCard(
 
                 Spacer(Modifier.width(12.dp))
 
-                // "See more +" pill button
                 Surface(
                     onClick = onClick,
                     shape = RoundedCornerShape(24.dp),

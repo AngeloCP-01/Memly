@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.StickyNote2
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -43,8 +43,8 @@ class MainActivity : ComponentActivity() {
 private val bottomNavItems = listOf(
     BottomNavItem(Screen.Timeline.route, "Home", Icons.Outlined.Home),
     BottomNavItem(Screen.CollectionList.route, "Collections", Icons.Outlined.StickyNote2),
-    BottomNavItem(Screen.Search.route, "Search", Icons.Outlined.FavoriteBorder),
-    BottomNavItem(Screen.Settings.route, "Settings", Icons.Outlined.GridView)
+    BottomNavItem(Screen.Map.route, "Map", Icons.Outlined.Map),
+    BottomNavItem(Screen.Settings.route, "Settings", Icons.Outlined.Settings)
 )
 
 private val bottomNavRoutes = bottomNavItems.map { it.route }

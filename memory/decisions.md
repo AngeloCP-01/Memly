@@ -10,7 +10,7 @@
 | D006 | Reference-first file management with SHA-256 hash dedup | Avoids duplicate media storage; content-addressable |
 | D007 | Package name: `com.example.memly` | Standard convention for development |
 | D008 | Soft pastel nostalgia theme with emotion-first UI | Warm, personal feel aligned with memory journaling |
-| D009 | Bottom nav: Timeline, Map, Search + FAB for Capture | Core actions always reachable; capture is primary action |
+| D009 | ~~Bottom nav: Timeline, Map, Search + FAB for Capture~~ Superseded by D048 | ~~Core actions always reachable~~ See D048 |
 | D010 | Enums (Mood, MediaType) stored as strings in Room | Readable in DB, survives ordinal changes |
 | D011 | String-based navigation routes (not type-safe) | Simpler setup; sufficient for current scale |
 | D012 | `android.disallowKotlinSourceSets=false` in gradle.properties | Required for KSP source set compatibility with AGP 9 |
@@ -38,7 +38,7 @@
 | D034 | Add-to-collection via toggle dialog on detail screen | Cleaner UX than long-press; direct and discoverable; avoids complex multi-select |
 | D035 | Collection memory counts via combine of individual count flows | Reactive; updates when memories added/removed; acceptable for small collection counts |
 | D036 | SettingsViewModel injects MemlyDatabase + MemoryDao directly (not via repository) | Settings needs clearAllTables() and count queries; no repository abstraction needed for these |
-| D037 | Settings accessible from Search screen shortcut (not bottom nav tab) | Keeps bottom nav focused on core actions (Timeline, Map, Search); settings is secondary |
+| D037 | ~~Settings accessible from Search screen shortcut~~ Superseded by D048 | ~~Keeps bottom nav focused~~ Settings is now a bottom nav tab |
 | D038 | Double confirmation for clear-all-data | Prevents accidental data loss; second dialog shows exact counts for informed decision |
 | D039 | Flow-based ViewModels skip try/catch (Timeline, Map, Search) | Room flows handle errors internally; adding catch would be dead code for local DB |
 | D040 | Custom app icon deferred to Phase 2 | Default launcher icon sufficient for MVP; proper adaptive icon needs design assets |
@@ -49,3 +49,10 @@
 | D045 | Coverflow pager replaces stacked overlap effect | 3D Y-rotation on side cards matches reference design; more visual depth than flat stacking |
 | D046 | @location format instead of pin icon | Cleaner, social-media-inspired location display; matches design reference |
 | D047 | Frosted glass "See more +" pill button | Semi-transparent white (0.2 alpha) blends with image; less intrusive than solid white button |
+| D048 | Bottom nav: Home, Collections, +Add, Map, Settings (4 tabs + center FAB) | All core destinations reachable from nav; Search removed as standalone screen |
+| D049 | Search screen removed; search inlined into Timeline and Collections screens | Reduces navigation depth; search is contextual to the screen you're on |
+| D050 | Multi-select mood filter with Set<Mood> instead of single Mood? | Users often want to see memories from multiple moods at once |
+| D051 | Date filter via DatePickerDialog (specific day) instead of sort order | More useful to find memories from a specific day than just sorting |
+| D052 | Top-level nav destinations use custom headers, not TopAppBar | Matches redesigned warm/card-based design language; no back arrow on main tabs |
+| D053 | CollectionDao.searchCollections() uses LIKE on name + description | Simple and effective for local search; matches existing memory search pattern |
+| D054 | Settings icon changed from GridView to Outlined.Settings (gear) | More recognizable/standard icon for settings |

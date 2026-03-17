@@ -3,31 +3,33 @@ package com.example.memly.ui.timeline
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.memly.data.local.entity.MemoryWithDetails
+import com.example.memly.data.local.entity.Mood
 import com.example.memly.data.repository.MemoryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
-import java.text.SimpleDateFormat
+import kotlinx.coroutines.flow.update
 import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 import javax.inject.Inject
 
-data class TimelineGroup(
-    val header: String,
-    val memories: List<MemoryWithDetails>
-)
-
 data class TimelineUiState(
-    val groups: List<TimelineGroup> = emptyList(),
     val allMemories: List<MemoryWithDetails> = emptyList(),
+    val displayMemories: List<MemoryWithDetails> = emptyList(),
     val timeHopMemories: List<MemoryWithDetails> = emptyList(),
-    val isRefreshing: Boolean = false
+    val searchQuery: String = "",
+    val moodFilters: Set<Mood> = emptySet(),
+    val dateFilter: Long? = null,
+    val isFiltering: Boolean = false
 )
 
+@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class TimelineViewModel @Inject constructor(
     private val memoryRepository: MemoryRepository
@@ -35,22 +37,56 @@ class TimelineViewModel @Inject constructor(
 
     private val todayMillis = System.currentTimeMillis()
 
+    private val _searchQuery = MutableStateFlow("")
+    private val _moodFilters = MutableStateFlow<Set<Mood>>(emptySet())
+    private val _dateFilter = MutableStateFlow<Long?>(null)
+
     private val allMemoriesFlow = memoryRepository.getAllMemoriesWithDetails()
 
-    private val groupedMemories = allMemoriesFlow
-        .map { memories -> groupByDate(memories) }
+    private val debouncedQuery = _searchQuery.debounce(300)
+
+    private val searchResults = debouncedQuery.flatMapLatest { query ->
+        if (query.isBlank()) {
+            allMemoriesFlow
+        } else {
+            memoryRepository.searchMemoriesWithDetails(query)
+        }
+    }
 
     private val timeHopMemories = memoryRepository.getTimeHopMemories(todayMillis)
 
     val uiState: StateFlow<TimelineUiState> = combine(
         allMemoriesFlow,
-        groupedMemories,
-        timeHopMemories
-    ) { all, groups, timeHop ->
+        timeHopMemories,
+        _searchQuery,
+        combine(searchResults, _moodFilters, _dateFilter) { results, moods, date ->
+            Triple(results, moods, date)
+        }
+    ) { all, timeHop, query, (results, moods, date) ->
+        var filtered = results
+
+        if (moods.isNotEmpty()) {
+            filtered = filtered.filter { it.memory.mood in moods }
+        }
+
+        if (date != null) {
+            val dayCal = Calendar.getInstance().apply { timeInMillis = date }
+            filtered = filtered.filter { memory ->
+                val memCal = Calendar.getInstance().apply { timeInMillis = memory.memory.memoryDate }
+                isSameDay(memCal, dayCal)
+            }
+        }
+
+        val isFiltering = query.isNotBlank() || moods.isNotEmpty() || date != null
+
         TimelineUiState(
-            groups = groups,
             allMemories = all,
-            timeHopMemories = timeHop
+            displayMemories = filtered,
+            timeHopMemories = timeHop,
+            searchQuery = query,
+            moodFilters = moods,
+            dateFilter = date,
+            isFiltering = isFiltering
         )
     }.stateIn(
         scope = viewModelScope,
@@ -58,26 +94,26 @@ class TimelineViewModel @Inject constructor(
         initialValue = TimelineUiState()
     )
 
-    private fun groupByDate(memories: List<MemoryWithDetails>): List<TimelineGroup> {
-        if (memories.isEmpty()) return emptyList()
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
 
-        val today = Calendar.getInstance()
-        val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-        val weekAgo = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -7) }
-        val dateFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
-        val dayFormat = SimpleDateFormat("EEEE, MMM d", Locale.getDefault())
+    fun clearSearch() {
+        _searchQuery.value = ""
+    }
 
-        return memories.groupBy { memory ->
-            val cal = Calendar.getInstance().apply { timeInMillis = memory.memory.memoryDate }
-            when {
-                isSameDay(cal, today) -> "Today"
-                isSameDay(cal, yesterday) -> "Yesterday"
-                cal.after(weekAgo) -> dayFormat.format(Date(memory.memory.memoryDate))
-                else -> dateFormat.format(Date(memory.memory.memoryDate))
-            }
-        }.map { (header, memories) ->
-            TimelineGroup(header = header, memories = memories)
+    fun toggleMoodFilter(mood: Mood) {
+        _moodFilters.update { current ->
+            if (mood in current) current - mood else current + mood
         }
+    }
+
+    fun clearMoodFilters() {
+        _moodFilters.value = emptySet()
+    }
+
+    fun setDateFilter(millis: Long?) {
+        _dateFilter.value = millis
     }
 
     private fun isSameDay(a: Calendar, b: Calendar): Boolean =
