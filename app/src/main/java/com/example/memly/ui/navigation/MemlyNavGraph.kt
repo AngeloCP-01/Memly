@@ -13,6 +13,7 @@ import com.example.memly.ui.collection.CollectionListScreen
 import com.example.memly.ui.detail.MemoryDetailScreen
 import com.example.memly.ui.map.MapScreen
 import com.example.memly.ui.search.SearchScreen
+import com.example.memly.ui.settings.SettingsScreen
 import com.example.memly.ui.timeline.TimelineScreen
 
 @Composable
@@ -51,7 +52,16 @@ fun MemlyNavGraph(
                 },
                 onCollectionsClick = {
                     navController.navigate(Screen.CollectionList.route)
+                },
+                onSettingsClick = {
+                    navController.navigate(Screen.Settings.route)
                 }
+            )
+        }
+
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

@@ -32,6 +32,12 @@ interface MemoryDao {
     @Query("SELECT * FROM memories WHERE id = :memoryId")
     suspend fun getMemoryById(memoryId: Long): MemoryEntity?
 
+    @Query("SELECT COUNT(*) FROM memories")
+    suspend fun getMemoryCount(): Int
+
+    @Query("SELECT COUNT(*) FROM media_files")
+    suspend fun getMediaFileCount(): Int
+
     @Transaction
     @Query("SELECT * FROM memories ORDER BY memoryDate DESC")
     fun getAllMemoriesWithDetails(): Flow<List<MemoryWithDetails>>
