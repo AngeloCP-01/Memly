@@ -1,19 +1,26 @@
 package com.example.memly.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -21,7 +28,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 
 data class BottomNavItem(
@@ -30,12 +44,53 @@ data class BottomNavItem(
     val icon: ImageVector
 )
 
+private class BottomBarCutoutShape(
+    private val cutoutRadiusPx: Float,
+    private val fabMarginPx: Float
+) : Shape {
+    override fun createOutline(
+        size: Size,
+        layoutDirection: LayoutDirection,
+        density: Density
+    ): Outline {
+        val path = Path()
+        val centerX = size.width / 2f
+        val totalRadius = cutoutRadiusPx + fabMarginPx
+        val curveDepth = totalRadius * 1.0f
+
+        path.moveTo(0f, 0f)
+        path.lineTo(centerX - totalRadius - 16f, 0f)
+
+        // Wider, deeper smooth curve into the cutout
+        path.cubicTo(
+            centerX - totalRadius, 0f,
+            centerX - totalRadius * 0.55f, curveDepth,
+            centerX, curveDepth
+        )
+
+        // Wider, deeper smooth curve out of the cutout
+        path.cubicTo(
+            centerX + totalRadius * 0.55f, curveDepth,
+            centerX + totalRadius, 0f,
+            centerX + totalRadius + 16f, 0f
+        )
+
+        path.lineTo(size.width, 0f)
+        path.lineTo(size.width, size.height)
+        path.lineTo(0f, size.height)
+        path.close()
+
+        return Outline.Generic(path)
+    }
+}
+
 @Composable
 fun MemlyBottomNavBar(
     items: List<BottomNavItem>,
     currentRoute: String?,
     onItemClick: (BottomNavItem) -> Unit,
     onAddClick: () -> Unit,
+    showFab: Boolean,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -45,51 +100,48 @@ fun MemlyBottomNavBar(
     val unselectedIconColor = colorScheme.onSurfaceVariant
     val addButtonColor = colorScheme.tertiary
 
-    val midIndex = items.size / 2
+    val fabRadius = 28.dp
+    val fabMargin = 10.dp
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(start = 32.dp, end = 32.dp, bottom = 12.dp),
-        contentAlignment = Alignment.Center
+            .padding(bottom = 12.dp),
+        contentAlignment = Alignment.BottomCenter
     ) {
+        // The nav bar — always has the cutout shape
+        val cutoutShape = with(LocalDensity.current) {
+            remember(fabRadius, fabMargin) {
+                BottomBarCutoutShape(
+                    cutoutRadiusPx = fabRadius.toPx(),
+                    fabMarginPx = fabMargin.toPx()
+                )
+            }
+        }
+
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(28.dp))
+                .padding(horizontal = 32.dp)
+                .clip(cutoutShape)
                 .background(barColor)
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val midIndex = items.size / 2
+
             items.forEachIndexed { index, item ->
-                // Insert add button in the middle
                 if (index == midIndex) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(addButtonColor)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onAddClick
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Add,
-                            contentDescription = "Add Memory",
-                            modifier = Modifier.size(24.dp),
-                            tint = colorScheme.onTertiary
-                        )
-                    }
+                    // Spacer for the cutout area — always present
+                    Spacer(modifier = Modifier.width(56.dp))
                 }
 
                 val isSelected = currentRoute == item.route
 
                 Box(
                     modifier = Modifier
+                        .weight(1f)
                         .size(48.dp)
                         .clip(CircleShape)
                         .then(
@@ -113,6 +165,32 @@ fun MemlyBottomNavBar(
                         tint = if (isSelected) selectedIconColor else unselectedIconColor
                     )
                 }
+            }
+        }
+
+        // FAB — visible on Timeline and CollectionList
+        AnimatedVisibility(
+            visible = showFab,
+            enter = scaleIn(),
+            exit = scaleOut(),
+            modifier = Modifier.offset(y = (-22).dp)
+        ) {
+            FloatingActionButton(
+                onClick = onAddClick,
+                shape = CircleShape,
+                containerColor = addButtonColor,
+                contentColor = colorScheme.onTertiary,
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 6.dp,
+                    pressedElevation = 8.dp
+                ),
+                modifier = Modifier.size(56.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Add,
+                    contentDescription = "Add",
+                    modifier = Modifier.size(28.dp)
+                )
             }
         }
     }

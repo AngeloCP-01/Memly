@@ -18,6 +18,7 @@ import com.example.memly.ui.timeline.TimelineScreen
 @Composable
 fun MemlyNavGraph(
     navController: NavHostController,
+    createCollectionTrigger: Int = 0,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -71,7 +72,8 @@ fun MemlyNavGraph(
             CollectionListScreen(
                 onCollectionClick = { collectionId ->
                     navController.navigate(Screen.CollectionDetail.createRoute(collectionId))
-                }
+                },
+                createTrigger = createCollectionTrigger
             )
         }
 

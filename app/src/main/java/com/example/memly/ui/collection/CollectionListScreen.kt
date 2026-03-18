@@ -56,10 +56,20 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun CollectionListScreen(
     onCollectionClick: (Long) -> Unit,
+    createTrigger: Int = 0,
     viewModel: CollectionListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Open create dialog when FAB is pressed from bottom nav
+    var lastConsumedTrigger by remember { mutableStateOf(0) }
+    LaunchedEffect(createTrigger) {
+        if (createTrigger > 0 && createTrigger != lastConsumedTrigger) {
+            lastConsumedTrigger = createTrigger
+            viewModel.showCreateDialog()
+        }
+    }
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
@@ -76,8 +86,7 @@ fun CollectionListScreen(
         ) {
             // -- Header --
             CollectionHeader(
-                collectionCount = uiState.collections.size,
-                onCreateClick = { viewModel.showCreateDialog() }
+                collectionCount = uiState.collections.size
             )
 
             Spacer(Modifier.height(16.dp))
@@ -265,13 +274,12 @@ private fun CollectionSearchBar(
 @Composable
 private fun CollectionHeader(
     collectionCount: Int,
-    onCreateClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 12.dp, top = 16.dp),
+            .padding(start = 20.dp, end = 20.dp, top = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Icon
@@ -291,7 +299,7 @@ private fun CollectionHeader(
         Spacer(Modifier.width(12.dp))
 
         // Title and subtitle
-        Column(modifier = Modifier.weight(1f)) {
+        Column {
             Text(
                 text = "Collections",
                 style = MaterialTheme.typography.titleMedium,
@@ -303,23 +311,6 @@ private fun CollectionHeader(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        }
-
-        // Create button
-        Surface(
-            onClick = onCreateClick,
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(40.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Create collection",
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
         }
     }
 }

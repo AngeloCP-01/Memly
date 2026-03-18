@@ -4,6 +4,19 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Ad-hoc: FAB Bottom Nav Redesign
+**Date:** 2026-03-18
+
+### Changed
+- Bottom nav bar now has a permanent curved cutout in the center, created via custom `BottomBarCutoutShape` using cubic bezier curves
+- Add button replaced with a proper `FloatingActionButton` that overlaps the bar, centered in the cutout
+- FAB shows on Timeline (navigates to Capture) and CollectionList (opens create collection dialog) with scale animation
+- FAB hides on Map and Settings screens; cutout remains for visual consistency
+- Removed add button from `CollectionHeader` — create action now uses the bottom nav FAB
+- Added `createCollectionTrigger` mechanism to wire FAB clicks through NavGraph to CollectionListScreen's ViewModel
+
+---
+
 ## Phase 2, Section 1: Voice Memos
 **Date:** 2026-03-18
 

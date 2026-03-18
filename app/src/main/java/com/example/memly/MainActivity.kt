@@ -15,6 +15,9 @@ import androidx.compose.material.icons.outlined.StickyNote2
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -56,6 +59,11 @@ private fun MemlyApp() {
     val currentRoute = navBackStackEntry?.destination?.route
 
     val showBottomBar = currentRoute in bottomNavRoutes
+    val showFab = currentRoute == Screen.Timeline.route ||
+            currentRoute == Screen.CollectionList.route
+
+    // Trigger counter to signal CollectionListScreen to open create dialog
+    var createCollectionTrigger by remember { mutableIntStateOf(0) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize()
@@ -63,6 +71,7 @@ private fun MemlyApp() {
         Box(modifier = Modifier.fillMaxSize()) {
             MemlyNavGraph(
                 navController = navController,
+                createCollectionTrigger = createCollectionTrigger,
                 modifier = Modifier.padding(innerPadding)
             )
 
@@ -80,8 +89,12 @@ private fun MemlyApp() {
                         }
                     },
                     onAddClick = {
-                        navController.navigate(Screen.Capture.route)
+                        when (currentRoute) {
+                            Screen.CollectionList.route -> createCollectionTrigger++
+                            else -> navController.navigate(Screen.Capture.route)
+                        }
                     },
+                    showFab = showFab,
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )
             }

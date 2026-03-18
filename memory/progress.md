@@ -34,6 +34,7 @@
 | 2 | Bottom Nav Bar Redesign         | COMPLETE    |
 | 3 | Timeline Card Redesign v2       | COMPLETE    |
 | 4 | Navigation & Screen Redesign    | COMPLETE    |
+| 5 | FAB Bottom Nav Redesign         | COMPLETE    |
 
 ## Current Pointer
 

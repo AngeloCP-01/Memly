@@ -12,6 +12,11 @@
 - `Screen` sealed class with string route properties
 - Bottom nav shown on main tabs (Timeline, Collections, Map, Settings)
 - Bottom nav hidden on full-screen routes (Detail, Capture)
+- Bottom nav bar has a permanent curved cutout in the center for the FAB
+- FAB overlaps the bar via `offset(y = (-22).dp)`, uses `AnimatedVisibility` with scale animation
+- FAB visible on Timeline (→ Capture) and CollectionList (→ create collection dialog); hidden on Map/Settings
+- Per-screen FAB action wired via `when(currentRoute)` in `onAddClick` callback
+- Collection create triggered via incrementing `Int` counter passed through NavGraph → `LaunchedEffect`
 - `Screen.Search` removed — search is inline on Timeline and Collections screens
 - Top-level nav destinations use custom headers (no TopAppBar/back arrow); only sub-screens use back navigation
 
@@ -154,7 +159,7 @@
 
 ## Collections
 
-- `CollectionListScreen` is a top-level nav destination (no back arrow); uses custom header with icon + title + create button
+- `CollectionListScreen` is a top-level nav destination (no back arrow); uses custom header with icon + title (create button moved to bottom nav FAB)
 - Collection cards use `RoundedCornerShape(20.dp)`, `surfaceContainerHigh` color, icon in `primaryContainer` circle
 - `CollectionListViewModel` uses `flatMapLatest` + `combine` to merge collection list with per-collection memory counts
 - `CollectionDetailViewModel` loads via `SavedStateHandle["collectionId"]`
