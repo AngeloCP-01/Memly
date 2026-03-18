@@ -25,7 +25,7 @@
 | D021 | TakePicture contract instead of CameraX for camera capture | Simpler; avoids CameraX build complexity; sufficient for capture-only use case |
 | D022 | play-services-location 21.3.0 for GPS | FusedLocationProviderClient provides best location with minimal setup |
 | D023 | ~~Media files stored in filesDir/media with UUID names~~ Superseded by D055 | ~~App-private~~ See D055 |
-| D024 | Dedup check skips insert silently when hash exists | Non-disruptive UX; user doesn't need to know about duplicates |
+| D024 | ~~Dedup check skips insert silently when hash exists~~ Superseded by D070 | ~~Non-disruptive UX~~ Skipping caused memories to save with zero media. See D070 |
 | D025 | Compose BOM 2025.05.00 | Aligns foundation (FlowRow) with newer navigation 2.9.7 / lifecycle 2.10.0 deps |
 | D026 | Three MemoryCard variants in shared `ui/components/` package | Timeline, carousel, and search cards have distinct layouts; shared file avoids duplication |
 | D027 | Time Hop query uses SQLite strftime for month-day matching | Cross-year date matching without loading all memories into memory |
@@ -70,3 +70,9 @@
 | D066 | ~~Bottom nav: 4 tabs + center inline FAB~~ Superseded by D067 | ~~FAB embedded in nav row~~ See D067 |
 | D067 | Bottom nav: curved cutout with overlapping FAB, per-screen action | Bar always has curved notch cutout. FAB overlaps top of bar via offset. FAB visible on Timeline (→ Capture) and CollectionList (→ create dialog). Hides with scale animation on other screens. Cutout always present for visual consistency. |
 | D068 | Collection create trigger via incrementing counter from MainActivity | FAB click on CollectionList increments `createCollectionTrigger` int, passed through NavGraph to CollectionListScreen. LaunchedEffect watches changes and calls `viewModel.showCreateDialog()`. Avoids coupling ViewModel to nav layer. |
+| D069 | ~~Dedup skips insert silently when hash exists~~ Superseded by D024 update | ~~Non-disruptive UX~~ See D070 |
+| D070 | Dedup reuses existing file reference instead of skipping | When `findMediaByHash` finds an existing media entry, create a new `MediaFileEntity` row referencing the same URI/metadata. Avoids disk duplication (no second copy) while allowing the same photo in multiple memories. Fixes bug where memories were saved with zero media. |
+| D071 | URI resolution: name+size match over _ID extraction | Photo Picker `_ID` is internal to the picker provider, not the real MediaStore row ID. Strategy 1 queries picker URI for `DISPLAY_NAME` + `SIZE`, then searches external MediaStore for a match. Requires `READ_MEDIA_IMAGES` permission. Direct `_ID` kept as fallback (Strategy 2). |
+| D072 | Runtime permission gate for "Keep Original" | `READ_MEDIA_IMAGES` (API 33+) or `READ_EXTERNAL_STORAGE` requested when user taps "Keep Original". If denied, falls back to "Save to Memly" (copy) with a toast. Pending URIs preserved via `hideImportChoiceDialog()` during permission flow. |
+| D073 | Broken reference detection uses openInputStream for all sources | `query()` alone can succeed on dead/expired URIs. `openInputStream()` is the definitive readability test. Applied to all sources (not just EXTERNAL) to catch dead picker URIs stored as any source type. |
+| D074 | Timeline card broken image fallback via LaunchedEffect readability check | `LaunchedEffect` runs `openInputStream` on `Dispatchers.IO` keyed on `fullResUri`. If unreadable, shows `BrokenImage` icon + "Image unavailable" text instead of blank card. Avoids relying on Coil error state which doesn't fire reliably for dead content URIs. |

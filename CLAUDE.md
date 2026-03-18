@@ -9,7 +9,7 @@ It contains everything Claude needs to work on the Memly project autonomously.
 
 **App:** Memly -- offline-first Android personal memory journal
 **Package:** `com.example.memly`
-**Current State:** Phase 2 in progress. Sections 0 (File Management Refactor), 1 (Voice Memos), and 5 (Theme & UI Polish) complete. Sections 2-4, 6-7 remaining. Voice memo recording and playback implemented with AudioRecorder utility, AudioPlaybackBar composable, AUDIO MediaType, and audio indicators on all cards. MediaStore-based public storage with three-state MediaSource model. Major UI redesign complete.
+**Current State:** Phase 2 in progress. Sections 0 (File Management Refactor), 1 (Voice Memos), and 5 (Theme & UI Polish) complete. Sections 2-4, 6-7 remaining. Voice memo recording and playback implemented with AudioRecorder utility, AudioPlaybackBar composable, AUDIO MediaType, and audio indicators on all cards. MediaStore-based public storage with three-state MediaSource model. Major UI redesign complete. Bug fixes: dedup reuses media references instead of skipping, URI resolution via name+size match, broken image fallback on timeline cards.
 **Scope:** 6 phases, ~300 tasks total. Free, no ads, no accounts, 100% offline (Phase 4 adds optional cloud sync).
 
 ## Tech Stack

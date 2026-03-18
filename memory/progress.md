@@ -35,8 +35,9 @@
 | 3 | Timeline Card Redesign v2       | COMPLETE    |
 | 4 | Navigation & Screen Redesign    | COMPLETE    |
 | 5 | FAB Bottom Nav Redesign         | COMPLETE    |
+| 6 | Fix: Image loading for Keep Original & dedup | COMPLETE |
 
 ## Current Pointer
 
-- **Last completed:** Phase 2, Section 1 -- Voice Memos (2026-03-18) — AudioRecorder utility, AudioPlaybackBar composable, AUDIO MediaType, durationMs field, recording UI in CaptureScreen, playback in DetailScreen, audio indicators on all card variants
+- **Last completed:** Ad-hoc #6 -- Fix image loading for Keep Original & dedup (2026-03-18) — Fixed dedup to reuse media instead of skipping, URI resolution via name+size match, READ_MEDIA_IMAGES runtime permission, broken reference detection for all sources, timeline card broken image fallback
 - **Next:** Phase 2, Section 2 -- Video Playback

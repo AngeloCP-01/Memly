@@ -4,6 +4,23 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Ad-hoc: Fix Image Loading for Keep Original & Dedup
+**Date:** 2026-03-18
+
+### Fixed
+- **Dedup blocking**: `findMediaByHash` returned existing entry and skipped media entirely — memories saved with zero images. Now reuses existing file's URI/metadata to create a new reference row, avoiding disk duplication while allowing the same photo in multiple memories.
+- **URI resolution**: Photo Picker returns temporary `content://media/picker/...` URIs; old resolver used `_ID` column which was picker-internal, not the real MediaStore ID. New Strategy 1 resolves by matching `DISPLAY_NAME` + `SIZE` against external MediaStore. Strategy 2 (direct ID) kept as fallback.
+- **Missing runtime permission**: `READ_MEDIA_IMAGES` was declared in manifest but never requested. Now requested when user taps "Keep Original"; falls back to "Save to Memly" if denied.
+- **Broken reference detection**: Only checked `EXTERNAL` source files; used `query()` which can succeed on dead URIs. Now checks ALL sources and uses `openInputStream()` for reliable readability test.
+- **Timeline card broken images**: `AsyncImage` failed silently for dead URIs showing blank cards. Now uses `LaunchedEffect` with `openInputStream` readability check + broken image fallback UI.
+
+### Changed
+- `MediaStoreManager.isUriAccessible()` uses `openInputStream()` instead of `query()`
+- `MemoryDetailViewModel` broken check applies to all media sources, not just EXTERNAL
+- `CaptureViewModel` added `hideImportChoiceDialog()` to preserve pending URIs during permission flow
+
+---
+
 ## Ad-hoc: FAB Bottom Nav Redesign
 **Date:** 2026-03-18
 

@@ -72,10 +72,11 @@
 - **In-app content** (camera, audio) → saved to public storage via MediaStore API: `Pictures/Memly/`, `Movies/Memly/`, `Music/Memly/`
 - **Picked content** (gallery) → user chooses: reference only (`EXTERNAL`) or copy to Memly (`IMPORTED`)
 - **MediaSource enum:** `APP_OWNED` (created in-app), `EXTERNAL` (URI reference), `IMPORTED` (user copied to Memly)
-- **URI resolution:** PhotoPicker URI → resolve to MediaStore content URI. Fallback: `takePersistableUriPermission()` for cloud-backed providers
+- **URI resolution:** PhotoPicker URI → resolve to MediaStore content URI via Strategy 1 (name+size match) or Strategy 2 (direct _ID). Requires `READ_MEDIA_IMAGES` runtime permission. Fallback: `takePersistableUriPermission()` for cloud-backed providers
+- **Broken reference detection:** `openInputStream()` check (not `query()`) on all media sources. Timeline cards use `LaunchedEffect` + `Dispatchers.IO` readability check with broken image fallback UI
 - **File naming:** `memly_<yyyyMMdd_HHmmss>_<shortId>.<ext>`
 - **Metadata cached in entity:** `mimeType`, `size`, `dateTaken`, `width`, `height` — avoids repeated MediaStore queries
-- **Dedup:** SHA-256 hash. On hash match for IMPORTED → reuse existing file. For EXTERNAL → just reference
+- **Dedup:** SHA-256 hash. On hash match → create new `MediaFileEntity` row reusing existing URI/metadata (no disk duplication, same photo allowed in multiple memories)
 - **Deletion:** APP_OWNED/IMPORTED → ContentResolver delete (createDeleteRequest fallback on Android 11+). EXTERNAL → DB row only
 - **Thumbnails** still in `cacheDir/thumbnails/` (app-private, regenerable)
 - Camera temp photos stored in `cacheDir/camera/`
