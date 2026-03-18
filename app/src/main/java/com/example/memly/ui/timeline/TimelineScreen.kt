@@ -1,5 +1,6 @@
 package com.example.memly.ui.timeline
 
+import android.net.Uri
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -72,7 +74,7 @@ import com.example.memly.data.local.entity.MemoryWithDetails
 import com.example.memly.data.local.entity.Mood
 import com.example.memly.ui.theme.color
 import kotlinx.coroutines.delay
-import java.io.File
+
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -642,12 +644,17 @@ private fun MemoryPagerCard(
     modifier: Modifier = Modifier
 ) {
     val memory = memoryWithDetails.memory
-    val imagePaths = remember(memoryWithDetails.mediaFiles) {
-        memoryWithDetails.mediaFiles.mapNotNull { it.thumbnailPath }
+    val imageUris = remember(memoryWithDetails.mediaFiles) {
+        memoryWithDetails.mediaFiles
+            .filter { it.mediaType != com.example.memly.data.local.entity.MediaType.AUDIO }
+            .map { it.mediaStoreUri }
     }
-    val hasImages = imagePaths.isNotEmpty()
+    val hasAudio = remember(memoryWithDetails.mediaFiles) {
+        memoryWithDetails.mediaFiles.any { it.mediaType == com.example.memly.data.local.entity.MediaType.AUDIO }
+    }
+    val hasImages = imageUris.isNotEmpty()
 
-    val slideshowState = rememberPagerState(pageCount = { imagePaths.size.coerceAtLeast(1) })
+    val slideshowState = rememberPagerState(pageCount = { imageUris.size.coerceAtLeast(1) })
 
     LaunchedEffect(isActive) {
         if (isActive && slideshowState.currentPage != 0) {
@@ -655,11 +662,11 @@ private fun MemoryPagerCard(
         }
     }
 
-    LaunchedEffect(isActive, imagePaths.size) {
-        if (isActive && imagePaths.size > 1) {
+    LaunchedEffect(isActive, imageUris.size) {
+        if (isActive && imageUris.size > 1) {
             while (true) {
                 delay(SLIDESHOW_INTERVAL_MS)
-                val next = (slideshowState.currentPage + 1) % imagePaths.size
+                val next = (slideshowState.currentPage + 1) % imageUris.size
                 slideshowState.animateScrollToPage(
                     page = next,
                     animationSpec = tween(SLIDE_DURATION_MS)
@@ -681,9 +688,9 @@ private fun MemoryPagerCard(
                 userScrollEnabled = false,
                 modifier = Modifier.fillMaxSize()
             ) { index ->
-                val path = imagePaths.getOrElse(index) { imagePaths.first() }
+                val uri = imageUris.getOrElse(index) { imageUris.first() }
                 AsyncImage(
-                    model = File(path),
+                    model = Uri.parse(uri),
                     contentDescription = memory.title ?: "Memory",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -727,14 +734,14 @@ private fun MemoryPagerCard(
                 )
         )
 
-        if (hasImages && imagePaths.size > 1) {
+        if (hasImages && imageUris.size > 1) {
             Row(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                imagePaths.indices.forEach { index ->
+                imageUris.indices.forEach { index ->
                     Box(
                         modifier = Modifier
                             .size(if (index == slideshowState.currentPage) 8.dp else 6.dp)
@@ -743,6 +750,27 @@ private fun MemoryPagerCard(
                                 if (index == slideshowState.currentPage) Color.White
                                 else Color.White.copy(alpha = 0.4f)
                             )
+                    )
+                }
+            }
+        }
+
+        // Audio indicator — below slideshow dots (top start area)
+        if (hasAudio) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.5f),
+                shape = CircleShape,
+                modifier = Modifier
+                    .padding(start = 16.dp, top = if (hasImages && imageUris.size > 1) 40.dp else 16.dp)
+                    .align(Alignment.TopStart)
+                    .size(28.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.Mic,
+                        contentDescription = "Has voice memo",
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }

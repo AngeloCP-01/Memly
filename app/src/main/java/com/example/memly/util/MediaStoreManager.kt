@@ -23,7 +23,8 @@ data class MediaMetadata(
     val size: Long,
     val dateTaken: Long?,
     val width: Int?,
-    val height: Int?
+    val height: Int?,
+    val durationMs: Long? = null
 )
 
 class MediaStoreManager(
@@ -78,6 +79,7 @@ class MediaStoreManager(
             // Query metadata
             val size = queryFileSize(insertUri)
             val dimensions = queryDimensions(insertUri, mediaType, mimeType)
+            val duration = if (mediaType == MediaType.AUDIO) queryDuration(insertUri) else null
 
             MediaMetadata(
                 uri = insertUri,
@@ -87,7 +89,8 @@ class MediaStoreManager(
                 size = size,
                 dateTaken = System.currentTimeMillis(),
                 width = dimensions?.first,
-                height = dimensions?.second
+                height = dimensions?.second,
+                durationMs = duration
             )
         } catch (e: Exception) {
             Log.e(TAG, "Failed to insert media", e)
@@ -249,11 +252,13 @@ class MediaStoreManager(
     private fun getRelativePath(mediaType: MediaType): String = when (mediaType) {
         MediaType.PHOTO -> MEMLY_PICTURES_DIR
         MediaType.VIDEO -> MEMLY_MOVIES_DIR
+        MediaType.AUDIO -> MEMLY_MUSIC_DIR
     }
 
     private fun getCollectionUri(mediaType: MediaType): Uri = when (mediaType) {
         MediaType.PHOTO -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         MediaType.VIDEO -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        MediaType.AUDIO -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
     }
 
     private fun queryFileSize(uri: Uri): Long {
@@ -291,9 +296,25 @@ class MediaStoreManager(
                         retriever.release()
                     }
                 }
+                MediaType.AUDIO -> null // Audio has no dimensions
             }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to query dimensions", e)
+            null
+        }
+    }
+
+    fun queryDuration(uri: Uri): Long? {
+        return try {
+            val retriever = MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(context, uri)
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+            } finally {
+                retriever.release()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to query duration", e)
             null
         }
     }

@@ -18,9 +18,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -42,7 +44,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.net.Uri
 import coil3.compose.AsyncImage
+import com.example.memly.data.local.entity.MediaType
 import com.example.memly.data.local.entity.MemoryWithDetails
 import com.example.memly.ui.theme.color
 import java.io.File
@@ -63,7 +67,9 @@ fun MemoryCard(
 ) {
     val memory = memoryWithDetails.memory
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
-    val thumbnailPath = memoryWithDetails.mediaFiles.firstOrNull()?.thumbnailPath
+    val visualMedia = memoryWithDetails.mediaFiles.firstOrNull { it.mediaType != MediaType.AUDIO }
+    val fullResUri = visualMedia?.mediaStoreUri
+    val hasAudio = memoryWithDetails.mediaFiles.any { it.mediaType == MediaType.AUDIO }
 
     var isPressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
@@ -72,7 +78,7 @@ fun MemoryCard(
     )
 
     Column(modifier = modifier) {
-        if (thumbnailPath != null) {
+        if (fullResUri != null) {
             // Image-dominant card
             Box(
                 modifier = Modifier
@@ -92,7 +98,7 @@ fun MemoryCard(
                     }
             ) {
                 AsyncImage(
-                    model = File(thumbnailPath),
+                    model = Uri.parse(fullResUri),
                     contentDescription = memory.title ?: "Memory",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -127,6 +133,27 @@ fun MemoryCard(
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
+                    }
+                }
+
+                // Audio indicator — top left
+                if (hasAudio) {
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.5f),
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .padding(12.dp)
+                            .align(Alignment.TopStart)
+                            .size(28.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Mic,
+                                contentDescription = "Has voice memo",
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
 
@@ -201,6 +228,27 @@ fun MemoryCard(
                     }
 
                     Column(modifier = Modifier.padding(16.dp)) {
+                        // Audio indicator for no-image card
+                        if (hasAudio) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Mic,
+                                    contentDescription = "Has voice memo",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    "Voice memo",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -323,7 +371,7 @@ fun MemoryCarouselCard(
 ) {
     val memory = memoryWithDetails.memory
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
-    val thumbnail = memoryWithDetails.mediaFiles.firstOrNull()?.thumbnailPath
+    val thumbnail = memoryWithDetails.mediaFiles.firstOrNull { it.mediaType != MediaType.AUDIO }?.thumbnailPath
 
     Box(
         modifier = modifier
@@ -412,7 +460,8 @@ fun MemorySearchResultCard(
 ) {
     val memory = memoryWithDetails.memory
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
-    val thumbnail = memoryWithDetails.mediaFiles.firstOrNull()?.thumbnailPath
+    val thumbnail = memoryWithDetails.mediaFiles.firstOrNull { it.mediaType != MediaType.AUDIO }?.thumbnailPath
+    val hasAudio = memoryWithDetails.mediaFiles.any { it.mediaType == MediaType.AUDIO }
 
     Surface(
         shape = RoundedCornerShape(12.dp),
@@ -439,6 +488,21 @@ fun MemorySearchResultCard(
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
+                } else if (hasAudio) {
+                    // Audio-only: show mic icon
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Mic,
+                            contentDescription = "Voice memo",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
                 } else {
                     // Mood color accent for no-image
                     memory.mood?.let { mood ->

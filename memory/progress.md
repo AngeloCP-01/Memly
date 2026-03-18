@@ -18,7 +18,7 @@
 | # | Section                        | Status      |
 |---|--------------------------------|-------------|
 | 0 | File Management Refactor       | COMPLETE    |
-| 1 | Voice Memos                    | NOT STARTED |
+| 1 | Voice Memos                    | COMPLETE    |
 | 2 | Video Playback                 | NOT STARTED |
 | 3 | Enhanced Capture               | NOT STARTED |
 | 4 | Onboarding Flow                | NOT STARTED |
@@ -37,5 +37,5 @@
 
 ## Current Pointer
 
-- **Last completed:** Phase 2, Section 0 -- File Management Refactor (2026-03-18) — MediaStore-based public storage, MediaSource enum, import choice dialog, broken reference handling, import-to-memly action
-- **Next:** Phase 2, Section 1 -- Voice Memos
+- **Last completed:** Phase 2, Section 1 -- Voice Memos (2026-03-18) — AudioRecorder utility, AudioPlaybackBar composable, AUDIO MediaType, durationMs field, recording UI in CaptureScreen, playback in DetailScreen, audio indicators on all card variants
+- **Next:** Phase 2, Section 2 -- Video Playback

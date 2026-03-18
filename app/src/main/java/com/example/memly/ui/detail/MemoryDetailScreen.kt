@@ -73,9 +73,11 @@ import coil3.compose.AsyncImage
 import com.example.memly.data.local.entity.CollectionEntity
 import com.example.memly.data.local.entity.MediaFileEntity
 import com.example.memly.data.local.entity.MediaSource
+import com.example.memly.data.local.entity.MediaType
 import com.example.memly.data.local.entity.MemoryEntity
 import com.example.memly.data.local.entity.Mood
 import com.example.memly.data.local.entity.TagEntity
+import com.example.memly.ui.components.AudioPlaybackBar
 import com.example.memly.ui.theme.color
 import android.net.Uri
 import java.text.SimpleDateFormat
@@ -155,9 +157,12 @@ fun MemoryDetailScreen(
                         .padding(padding)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    // Photo hero section
+                    // Photo hero section (visual media only)
+                    val visualMedia = state.mediaFiles.filter { it.mediaType != MediaType.AUDIO }
+                    val audioMedia = state.mediaFiles.filter { it.mediaType == MediaType.AUDIO }
+
                     PhotoHeroSection(
-                        mediaFiles = state.mediaFiles,
+                        mediaFiles = visualMedia,
                         mood = memory.mood,
                         onBackClick = {
                             if (state.isEditing) viewModel.cancelEditing()
@@ -169,6 +174,21 @@ fun MemoryDetailScreen(
                         onImportToMemly = { viewModel.importToMemly(it) },
                         onRemoveBroken = { viewModel.removeBrokenReference(it) }
                     )
+
+                    // Audio playback section
+                    if (audioMedia.isNotEmpty()) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            audioMedia.forEach { audio ->
+                                AudioPlaybackBar(
+                                    audioUri = Uri.parse(audio.mediaStoreUri),
+                                    durationMs = audio.durationMs
+                                )
+                            }
+                        }
+                    }
 
                     // Metadata section
                     Column(

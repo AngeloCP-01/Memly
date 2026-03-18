@@ -4,6 +4,32 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Phase 2, Section 1: Voice Memos
+**Date:** 2026-03-18
+
+### Added
+- `AUDIO` value added to `MediaType` enum — enables audio file handling across the entire data layer
+- `AudioRecorder` utility class — wraps `MediaRecorder` lifecycle (start/stop/cancel), records AAC audio at 128kbps/44.1kHz to temp M4A files
+- `AudioPlaybackBar` composable — play/pause with `MediaPlayer`, linear progress bar, elapsed/total time display, auto-cleanup via `DisposableEffect`
+- `RECORD_AUDIO` permission in AndroidManifest with runtime request on CaptureScreen
+- Voice Memo section on CaptureScreen — record button, recording indicator with live timer, cancel/stop controls, playback preview with remove button
+- Audio playback on MemoryDetailScreen — `AudioPlaybackBar` shown below photo hero for memories with voice memos
+- Audio indicator (mic badge) on all card variants: timeline pager cards, no-image fallback cards, search result cards, carousel cards, map preview cards
+- `durationMs` field on `MediaFileEntity` — cached at save time for instant playback info
+- `queryDuration()` method on `MediaStoreManager` — extracts duration via `MediaMetadataRetriever`
+- `durationMs` field on `MediaMetadata` data class
+- `audio/` cache path added to FileProvider paths (`file_paths.xml`)
+
+### Changed
+- `MediaStoreManager.getRelativePath()` and `getCollectionUri()` extended for `AUDIO` → `Music/Memly/` and `MediaStore.Audio.Media`
+- `MediaStoreManager.queryDimensions()` returns `null` for `AUDIO` (no visual dimensions)
+- `ThumbnailUtil.generateThumbnail()` returns `null` for `AUDIO` (no visual thumbnail)
+- `CaptureViewModel.processMediaItem()` handles `AUDIO` media type (default mimeType, duration extraction)
+- All card components filter audio from visual media for image display, show mic indicator separately
+- Timeline slideshow pager excludes audio files from image URIs
+
+---
+
 ## Phase 2, Section 0: File Management Refactor
 **Date:** 2026-03-18
 

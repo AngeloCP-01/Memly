@@ -3,4 +3,5 @@
     <files-path name="memly_media" path="media/" />
     <cache-path name="memly_cache" path="thumbnails/" />
     <cache-path name="memly_camera" path="camera/" />
+    <cache-path name="memly_audio" path="audio/" />
 </paths>

@@ -32,5 +32,6 @@ data class MediaFileEntity(
     val size: Long = 0,
     val dateTaken: Long? = null,
     val width: Int? = null,
-    val height: Int? = null
+    val height: Int? = null,
+    val durationMs: Long? = null
 )

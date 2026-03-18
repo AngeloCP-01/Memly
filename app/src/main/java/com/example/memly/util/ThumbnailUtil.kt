@@ -26,6 +26,7 @@ object ThumbnailUtil {
             val bitmap = when (mediaType) {
                 MediaType.PHOTO -> decodeImageThumbnail(context, sourceUri)
                 MediaType.VIDEO -> extractVideoFrame(context, sourceUri)
+                MediaType.AUDIO -> null // Audio has no visual thumbnail
             } ?: return null
 
             if (!outputDir.exists()) outputDir.mkdirs()

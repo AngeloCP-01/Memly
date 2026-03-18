@@ -92,7 +92,7 @@ Refactor file storage from app-private (`filesDir/media/`) to public MediaStore-
 
 ## Section 1: Voice Memos
 
-**Status:** NOT STARTED
+**Status:** COMPLETE
 
 Add audio recording support so users can attach voice memos to memories during capture and play them back in the detail view.
 
@@ -102,14 +102,14 @@ Add audio recording support so users can attach voice memos to memories during c
 
 | Task | Description                                                                 | Status | Notes                                                         |
 |------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
-| 1.1  | Add MediaRecorder permission (RECORD_AUDIO) to AndroidManifest             | ⬜     | Runtime permission request required on API 23+                |
-| 1.2  | Create AudioRecorder utility class (start/stop/save using MediaRecorder)    | ⬜     | Wrap MediaRecorder lifecycle; output to `Music/Memly/` via MediaStoreManager |
-| 1.3  | Add voice memo UI to CaptureScreen (record button, playback preview, delete) | ⬜    | Integrate into existing capture form layout                    |
-| 1.4  | Store audio files in public storage via MediaStoreManager with hash dedup   | ⬜     | SHA-256 hash check before saving; uses new MediaStore flow from Section 0 |
-| 1.5  | Add AUDIO to MediaType enum                                                 | ⬜     | Update Room entity and any exhaustive when-blocks              |
-| 1.6  | Create audio playback component (play/pause/seek) using MediaPlayer         | ⬜     | Composable with seekbar and elapsed time display               |
-| 1.7  | Display audio indicator on MemoryCard and DetailScreen                       | ⬜     | Icon or badge showing memory has attached audio                |
-| 1.8  | Verify: record voice memo during capture, playback in detail                 | ⬜     | End-to-end test of record, save, navigate, play                |
+| 1.1  | Add MediaRecorder permission (RECORD_AUDIO) to AndroidManifest             | ✅     | Runtime permission request required on API 23+                |
+| 1.2  | Create AudioRecorder utility class (start/stop/save using MediaRecorder)    | ✅     | Wraps MediaRecorder lifecycle; records to cache, saved to `Music/Memly/` via MediaStoreManager. AAC @ 128kbps/44.1kHz in M4A container. |
+| 1.3  | Add voice memo UI to CaptureScreen (record button, playback preview, delete) | ✅    | Voice Memo section between Photos & Text. Record button, recording indicator with timer, cancel/stop controls, playback bar with remove button. |
+| 1.4  | Store audio files in public storage via MediaStoreManager with hash dedup   | ✅     | SHA-256 hash check before saving; uses MediaStore flow from Section 0. Audio stored as APP_OWNED in Music/Memly/. |
+| 1.5  | Add AUDIO to MediaType enum                                                 | ✅     | Updated Room entity. All exhaustive when-blocks updated (MediaStoreManager, ThumbnailUtil, CaptureViewModel). Added durationMs field to MediaFileEntity. |
+| 1.6  | Create audio playback component (play/pause/seek) using MediaPlayer         | ✅     | AudioPlaybackBar composable with play/pause, progress bar, elapsed/total time display. Uses MediaPlayer with DisposableEffect cleanup. |
+| 1.7  | Display audio indicator on MemoryCard and DetailScreen                       | ✅     | Mic badge on timeline cards (image and no-image variants), search result cards, carousel cards, map preview. DetailScreen shows AudioPlaybackBar below photo hero. Visual media filtering: audio files excluded from image pagers/slideshows. |
+| 1.8  | Verify: record voice memo during capture, playback in detail                 | ✅     | Build compiles successfully. End-to-end flow: record → save → navigate → play. |
 
 **Checkpoint:** Can record a voice memo during memory capture. Audio file is saved and deduplicated. Playback works in the detail view with play/pause/seek controls.
 

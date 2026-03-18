@@ -334,7 +334,7 @@ private fun MemoryMapPreviewCard(
 ) {
     val memory = memoryWithDetails.memory
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
-    val thumbnail = memoryWithDetails.mediaFiles.firstOrNull()?.thumbnailPath
+    val thumbnail = memoryWithDetails.mediaFiles.firstOrNull { it.mediaType != com.example.memly.data.local.entity.MediaType.AUDIO }?.thumbnailPath
 
     Surface(
         shape = RoundedCornerShape(16.dp),

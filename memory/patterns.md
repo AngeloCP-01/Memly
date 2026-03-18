@@ -78,6 +78,18 @@
 - Video thumbnails extracted via `MediaMetadataRetriever.getFrameAtTime()`
 - **MediaStoreManager** utility class: single source of truth for all public storage I/O
 
+## Voice Memos / Audio
+
+- `AudioRecorder` utility wraps `MediaRecorder` lifecycle; records to `cacheDir/audio/` temp file
+- Audio format: AAC encoder, MPEG-4 container (`.m4a`), 128kbps, 44.1kHz
+- Recorded audio saved as `APP_OWNED` to `Music/Memly/` via `MediaStoreManager.insertMedia()`
+- `AudioPlaybackBar` composable: play/pause with `MediaPlayer`, progress bar, elapsed/total time
+- `MediaPlayer` released via `DisposableEffect` `onDispose`
+- `durationMs` field on `MediaFileEntity` — cached at save time via `MediaMetadataRetriever`
+- Audio files excluded from image pagers/slideshows — filter with `mediaType != MediaType.AUDIO`
+- Audio indicator: `Icons.Default.Mic` badge on cards; `AudioPlaybackBar` on DetailScreen below photo hero
+- `ThumbnailUtil.generateThumbnail()` returns `null` for `AUDIO` — no visual thumbnail
+
 ## Timeline
 
 - `TimelineUiState` contains `allMemories`, `groups: List<TimelineGroup>`, and `timeHopMemories`

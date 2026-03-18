@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -34,12 +35,15 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -53,6 +57,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -76,6 +81,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.example.memly.data.local.entity.MediaType
 import com.example.memly.data.local.entity.Mood
+import com.example.memly.ui.components.AudioPlaybackBar
+import com.example.memly.ui.components.formatDuration
 import com.example.memly.ui.theme.color
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -165,6 +172,17 @@ fun CaptureScreen(
         }
     }
 
+    // Audio recording permission
+    val audioPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            viewModel.startRecording()
+        } else {
+            Toast.makeText(context, "Microphone permission is required to record", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     // Date picker state
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -194,7 +212,9 @@ fun CaptureScreen(
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    itemsIndexed(state.mediaItems) { index, item ->
+                    val visualItems = state.mediaItems.filter { it.mediaType != MediaType.AUDIO }
+                    itemsIndexed(visualItems) { _, item ->
+                        val index = state.mediaItems.indexOf(item)
                         Box(
                             modifier = Modifier
                                 .size(100.dp)
@@ -242,6 +262,94 @@ fun CaptureScreen(
                                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                             }
                         )
+                    }
+                }
+
+                // === VOICE MEMO SECTION ===
+                Text("Voice Memo", style = MaterialTheme.typography.titleMedium)
+                val audioItems = state.mediaItems.filter { it.mediaType == MediaType.AUDIO }
+
+                if (state.isRecording) {
+                    // Recording in progress
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Mic,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Recording...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Text(
+                                    formatDuration(state.recordingDurationMs),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
+                                )
+                            }
+                            IconButton(onClick = { viewModel.cancelRecording() }) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Cancel",
+                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                            IconButton(onClick = { viewModel.stopRecording() }) {
+                                Icon(
+                                    Icons.Default.Stop,
+                                    contentDescription = "Stop recording",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                } else if (audioItems.isEmpty()) {
+                    // Record button
+                    Button(
+                        onClick = {
+                            audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    ) {
+                        Icon(Icons.Default.Mic, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Record Voice Memo")
+                    }
+                }
+
+                // Show recorded audio items with playback + remove
+                audioItems.forEachIndexed { _, item ->
+                    val index = state.mediaItems.indexOf(item)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        AudioPlaybackBar(
+                            audioUri = item.uri,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = { viewModel.removeMedia(index) },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(Icons.Default.Close, contentDescription = "Remove", modifier = Modifier.size(18.dp))
+                        }
                     }
                 }
 

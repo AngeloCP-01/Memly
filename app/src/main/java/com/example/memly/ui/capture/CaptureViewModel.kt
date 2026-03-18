@@ -10,6 +10,7 @@ import com.example.memly.data.local.entity.MediaType
 import com.example.memly.data.local.entity.MemoryEntity
 import com.example.memly.data.local.entity.Mood
 import com.example.memly.data.repository.MemoryRepository
+import com.example.memly.util.AudioRecorder
 import com.example.memly.util.FileHashUtil
 import com.example.memly.util.MediaStoreManager
 import com.example.memly.util.ThumbnailUtil
@@ -50,7 +51,9 @@ data class CaptureUiState(
     val error: String? = null,
     val isLocationLoading: Boolean = false,
     val showImportChoiceDialog: Boolean = false,
-    val pendingPickedUris: List<Pair<Uri, MediaType>> = emptyList()
+    val pendingPickedUris: List<Pair<Uri, MediaType>> = emptyList(),
+    val isRecording: Boolean = false,
+    val recordingDurationMs: Long = 0
 )
 
 @HiltViewModel
@@ -62,6 +65,54 @@ class CaptureViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(CaptureUiState())
     val uiState: StateFlow<CaptureUiState> = _uiState.asStateFlow()
+
+    private val audioRecorder = AudioRecorder(appContext)
+    private var recordingTimerJob: kotlinx.coroutines.Job? = null
+
+    fun startRecording() {
+        val uri = audioRecorder.start()
+        if (uri != null) {
+            _uiState.update { it.copy(isRecording = true, recordingDurationMs = 0) }
+            recordingTimerJob = viewModelScope.launch {
+                while (true) {
+                    kotlinx.coroutines.delay(100)
+                    _uiState.update { it.copy(recordingDurationMs = it.recordingDurationMs + 100) }
+                }
+            }
+        } else {
+            _uiState.update { it.copy(error = "Failed to start recording") }
+        }
+    }
+
+    fun stopRecording() {
+        recordingTimerJob?.cancel()
+        recordingTimerJob = null
+        val uri = audioRecorder.stop()
+        if (uri != null) {
+            val item = MediaItem(uri = uri, mediaType = MediaType.AUDIO, isFromCamera = true)
+            _uiState.update {
+                it.copy(
+                    isRecording = false,
+                    recordingDurationMs = 0,
+                    mediaItems = it.mediaItems + item
+                )
+            }
+        } else {
+            _uiState.update { it.copy(isRecording = false, recordingDurationMs = 0, error = "Recording failed") }
+        }
+    }
+
+    fun cancelRecording() {
+        recordingTimerJob?.cancel()
+        recordingTimerJob = null
+        audioRecorder.cancel()
+        _uiState.update { it.copy(isRecording = false, recordingDurationMs = 0) }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        if (audioRecorder.isRecording) audioRecorder.cancel()
+    }
 
     fun updateTitle(title: String) {
         _uiState.update { it.copy(title = title) }
@@ -224,6 +275,7 @@ class CaptureViewModel @Inject constructor(
         val mimeType = context.contentResolver.getType(item.uri) ?: when (item.mediaType) {
             MediaType.PHOTO -> "image/jpeg"
             MediaType.VIDEO -> "video/mp4"
+            MediaType.AUDIO -> "audio/mp4"
         }
 
         val source: MediaSource
@@ -234,9 +286,10 @@ class CaptureViewModel @Inject constructor(
         var dateTaken: Long? = null
         var width: Int? = null
         var height: Int? = null
+        var durationMs: Long? = null
 
         when {
-            // Camera photo → save to public storage (APP_OWNED)
+            // Camera photo / voice memo → save to public storage (APP_OWNED)
             item.isFromCamera -> {
                 source = MediaSource.APP_OWNED
                 val metadata = mediaStoreManager.insertMedia(item.uri, item.mediaType, mimeType)
@@ -248,6 +301,7 @@ class CaptureViewModel @Inject constructor(
                 dateTaken = metadata.dateTaken
                 width = metadata.width
                 height = metadata.height
+                durationMs = metadata.durationMs
             }
             // Picked → user chose "Save to Memly" (IMPORTED)
             item.importChoice == ImportChoice.SAVE_TO_MEMLY -> {
@@ -306,7 +360,8 @@ class CaptureViewModel @Inject constructor(
             size = size,
             dateTaken = dateTaken,
             width = width,
-            height = height
+            height = height,
+            durationMs = durationMs
         )
     }
 }
