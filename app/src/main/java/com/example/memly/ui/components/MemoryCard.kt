@@ -49,7 +49,6 @@ import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import coil3.compose.AsyncImage
-import coil3.compose.SubcomposeAsyncImage
 import com.example.memly.data.local.entity.MediaType
 import com.example.memly.data.local.entity.MemoryWithDetails
 import com.example.memly.ui.theme.color
