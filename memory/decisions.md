@@ -7,7 +7,7 @@
 | D003 | Room entities used directly across layers (no separate domain models) | Reduces boilerplate for MVP; can refactor later |
 | D004 | Kotlin 2.0.21 + AGP 9.0.1; KSP over KAPT | AGP 9 drops KAPT support; KSP is faster |
 | D005 | Hilt 2.59.2 | Minimum version with AGP 9 compatibility |
-| D006 | Reference-first file management with SHA-256 hash dedup | Avoids duplicate media storage; content-addressable |
+| D006 | ~~Reference-first file management with SHA-256 hash dedup~~ Superseded by D055 | ~~Avoids duplicate media storage~~ See D055 |
 | D007 | Package name: `com.example.memly` | Standard convention for development |
 | D008 | Soft pastel nostalgia theme with emotion-first UI | Warm, personal feel aligned with memory journaling |
 | D009 | ~~Bottom nav: Timeline, Map, Search + FAB for Capture~~ Superseded by D048 | ~~Core actions always reachable~~ See D048 |
@@ -24,7 +24,7 @@
 | D020 | CaptureViewModel uses @ApplicationContext Context injection | Needs context for file I/O (copy media, generate thumbnails, compute hashes); avoids AndroidViewModel |
 | D021 | TakePicture contract instead of CameraX for camera capture | Simpler; avoids CameraX build complexity; sufficient for capture-only use case |
 | D022 | play-services-location 21.3.0 for GPS | FusedLocationProviderClient provides best location with minimal setup |
-| D023 | Media files stored in filesDir/media with UUID names | App-private; no MediaStore dependency; survives cache clearing |
+| D023 | ~~Media files stored in filesDir/media with UUID names~~ Superseded by D055 | ~~App-private~~ See D055 |
 | D024 | Dedup check skips insert silently when hash exists | Non-disruptive UX; user doesn't need to know about duplicates |
 | D025 | Compose BOM 2025.05.00 | Aligns foundation (FlowRow) with newer navigation 2.9.7 / lifecycle 2.10.0 deps |
 | D026 | Three MemoryCard variants in shared `ui/components/` package | Timeline, carousel, and search cards have distinct layouts; shared file avoids duplication |
@@ -56,3 +56,9 @@
 | D052 | Top-level nav destinations use custom headers, not TopAppBar | Matches redesigned warm/card-based design language; no back arrow on main tabs |
 | D053 | CollectionDao.searchCollections() uses LIKE on name + description | Simple and effective for local search; matches existing memory search pattern |
 | D054 | Settings icon changed from GridView to Outlined.Settings (gear) | More recognizable/standard icon for settings |
+| D055 | MediaStore-based public storage with three-state MediaSource model | In-app content (camera/audio) saved to `Pictures/Memly/`, `Movies/Memly/`, `Music/Memly/` via MediaStore — survives uninstall, visible in gallery. Picked content referenced by URI (EXTERNAL) or optionally copied (IMPORTED). Replaces app-private filesDir approach. Eliminates storage duplication for references. |
+| D056 | MediaSource enum: APP_OWNED, EXTERNAL, IMPORTED | Three-state ownership model. APP_OWNED = created in-app, lives in public Memly folder. EXTERNAL = URI reference to gallery photo, zero storage cost. IMPORTED = user chose "Save to Memly", copied to public folder, app owns it. Replaces boolean isReference flag. |
+| D057 | URI resolution: MediaStore first, SAF fallback | PhotoPicker URIs are temporary — must resolve to stable MediaStore content URI (query by _ID). If resolution fails (cloud-backed providers like Google Photos), fall back to takePersistableUriPermission(). Never store raw PhotoPicker URIs. |
+| D058 | File naming: memly_\<timestamp\>_\<shortId\>.\<ext\> | Structured convention for files in public Memly folders. Sortable, traceable, no collisions. Replaces hash-based and UUID-based naming. |
+| D059 | Deletion by source: owned=ContentResolver, external=DB only | APP_OWNED/IMPORTED files deleted via ContentResolver (with createDeleteRequest fallback on Android 11+). EXTERNAL references only remove DB row, never touch original file. |
+| D060 | Cache media metadata in entity at capture time | Store mimeType, size, dateTaken, width, height in MediaFileEntity. Avoids repeated MediaStore queries for display. |

@@ -540,112 +540,171 @@ cameraLauncher.launch(photoUri)
 
 ## 3. File Management System
 
-### 3.1 Content-Addressed Storage
+### 3.1 MediaStore-Based Public Storage
 
-All media files are stored using their SHA-256 hash as the filename. This provides
-natural deduplication at the filesystem level -- two identical photos will always
-produce the same hash and therefore the same filename.
+Media files are stored in **public directories** via Android's MediaStore API. This ensures files survive app uninstall and are visible in the device's gallery and file manager.
 
-**Directory layout:**
+**Three-state ownership model:**
+
+```kotlin
+enum class MediaSource {
+    APP_OWNED,   // Created in-app (camera/recording), lives in Pictures/Memly/
+    EXTERNAL,    // URI reference to user's gallery photo, zero storage cost
+    IMPORTED     // User chose "Save to Memly", copied to Pictures/Memly/
+}
+```
+
+**Directory layout (public storage):**
 
 ```
-context.filesDir/
-  +-- media/
-  |     +-- a3f2b8c9...d4e1.jpg        <-- full-size media files
-  |     +-- b7c1d9e0...f5a2.mp4
-  |     +-- ...
-  +-- thumbnails/
-        +-- a3f2b8c9...d4e1_thumb.jpg   <-- 300px max dimension, JPEG 80%
-        +-- b7c1d9e0...f5a2_thumb.jpg
-        +-- ...
+Pictures/Memly/
+  +-- memly_20260318_143022_a7f3.jpg     <-- APP_OWNED or IMPORTED
+  +-- memly_20260318_150511_b2c1.jpg
+  +-- ...
+Movies/Memly/
+  +-- memly_20260318_160000_c4d2.mp4
+Music/Memly/
+  +-- memly_20260318_170000_e5f3.aac
+
+cacheDir/thumbnails/                      <-- app-private, regenerable
+  +-- a7f3_thumb.jpg                       <-- 300px max dimension, JPEG 80%
+  +-- c4d2_thumb.jpg
 ```
 
 **Naming convention:**
-- Media files: `{sha256hash}.{original_extension}`
-- Thumbnails:  `{sha256hash}_thumb.jpg`
+- Media files: `memly_<yyyyMMdd_HHmmss>_<shortId>.<ext>`
+- Thumbnails: `{shortId}_thumb.jpg`
 
-**Why content-addressed:**
-- Identical files are stored once, regardless of how many memories reference them.
-- No need for UUID generation -- the content IS the identifier.
-- Simplifies dedup: just check if the file already exists.
+**Why MediaStore-based:**
+- Files survive app uninstall (public storage, not app-private).
+- Visible in gallery and file manager automatically.
+- No storage duplication for referenced files (EXTERNAL source).
+- Modern Android-compliant (scoped storage compatible).
 
-### 3.2 File Operations Flow -- Adding a Media File
+### 3.2 File Operations Flow -- Adding Media
+
+#### Flow A: In-App Camera / Audio Recording (APP_OWNED)
 
 ```
-Input: content:// URI from Photo Picker or Camera
+Camera or AudioRecorder produces content
    |
    v
 +-----------------------------------------------------+
-| 1. Open InputStream                                  |
-|    val inputStream = contentResolver                  |
-|        .openInputStream(uri)                         |
-|    (on Dispatchers.IO)                               |
-+-----------------------------------------------------+
-   |
-   v
-+-----------------------------------------------------+
-| 2. Compute SHA-256 hash                              |
-|    val hash = FileHashUtil.computeSha256(inputStream) |
-|    (streams through 8KB buffer, constant memory)     |
-+-----------------------------------------------------+
-   |
-   v
-+-----------------------------------------------------+
-| 3. Determine file extension                          |
-|    val mimeType = contentResolver.getType(uri)       |
-|    val ext = MimeTypeMap.getSingleton()               |
-|        .getExtensionFromMimeType(mimeType) ?: "jpg"  |
+| 1. Insert via MediaStore                             |
+|    val values = ContentValues().apply {               |
+|        put(DISPLAY_NAME, "memly_<ts>_<id>.jpg")     |
+|        put(MIME_TYPE, "image/jpeg")                  |
+|        put(RELATIVE_PATH, "Pictures/Memly")          |
+|    }                                                 |
+|    val uri = contentResolver.insert(                  |
+|        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,  |
+|        values                                        |
+|    )                                                 |
 +-----------------------------------------------------+
    |
    v
 +-----------------------------------------------------+
-| 4. Query DB for existing file with same hash         |
-|    val existing = memoryDao                           |
-|        .findMediaByHash(hash)                        |
+| 2. Write content to URI output stream                |
+|    contentResolver.openOutputStream(uri)              |
+|        .use { output -> content.copyTo(output) }     |
 +-----------------------------------------------------+
    |
-   +--- EXISTS ----------------------------------------+
-   |                                                    |
-   |  Reuse existing file path. Do NOT copy again.      |
-   |  Return ProcessedMediaItem(                        |
-   |      filePath = existing.filePath,                 |
-   |      thumbnailPath = existing.thumbnailPath,       |
-   |      hash = hash,                                  |
-   |      mediaType = mediaType,                        |
-   |      isReference = true   // points to same file   |
-   |  )                                                 |
-   |                                                    |
-   +--- NOT EXISTS ------------------------------------+
+   v
++-----------------------------------------------------+
+| 3. Compute SHA-256 hash                              |
+|    val hash = FileHashUtil.computeSha256(             |
+|        contentResolver.openInputStream(uri))          |
++-----------------------------------------------------+
+   |
+   v
++-----------------------------------------------------+
+| 4. Cache metadata from MediaStore                    |
+|    Query: mimeType, size, dateTaken, width, height   |
++-----------------------------------------------------+
+   |
+   v
++-----------------------------------------------------+
+| 5. Generate thumbnail → cacheDir/thumbnails/         |
++-----------------------------------------------------+
+   |
+   v
+Return MediaFileEntity(
+    mediaStoreUri = uri.toString(),
+    source = APP_OWNED,
+    relativePath = "Pictures/Memly",
+    displayName = "memly_<ts>_<id>.jpg",
+    fileHash = hash,
+    // + cached metadata fields
+)
+```
+
+#### Flow B: Picked from Gallery (EXTERNAL or IMPORTED)
+
+```
+PhotoPicker returns temporary content:// URI
+   |
+   v
++-----------------------------------------------------+
+| 1. Show user choice dialog:                         |
+|    "Keep in original location" → EXTERNAL            |
+|    "Save to Memly" → IMPORTED                        |
+|    (Warning on "Keep": "If original is deleted,      |
+|     this photo may no longer appear in Memly.")      |
++-----------------------------------------------------+
+   |
+   +--- EXTERNAL (reference only) ---------------------+
    |                                                    |
    |  +------------------------------------------------+
-   |  | 5a. Copy file to app storage                   |
-   |  |     val destFile = File(                        |
-   |  |         filesDir, "media/${hash}.${ext}"        |
-   |  |     )                                          |
-   |  |     contentResolver.openInputStream(uri)        |
-   |  |         .copyTo(destFile.outputStream())        |
-   |  |     (on Dispatchers.IO)                        |
+   |  | 2a. Resolve URI                                |
+   |  |     Try: query MediaStore by _ID → stable URI  |
+   |  |     Fallback: takePersistableUriPermission()   |
+   |  |         (for cloud-backed providers)            |
    |  +------------------------------------------------+
    |       |
    |       v
    |  +------------------------------------------------+
-   |  | 5b. Generate thumbnail                         |
-   |  |     val thumbFile = ThumbnailUtil               |
-   |  |         .generateThumbnail(                     |
-   |  |             context, uri,                       |
-   |  |             File(filesDir, "thumbnails"),       |
-   |  |             hash                                |
-   |  |         )                                      |
-   |  |     --> saves to thumbnails/{hash}_thumb.jpg    |
+   |  | 3a. Compute hash + cache metadata              |
    |  +------------------------------------------------+
    |       |
    |       v
-   |  Return ProcessedMediaItem(
-   |      filePath = destFile.absolutePath,
-   |      thumbnailPath = thumbFile?.absolutePath,
-   |      hash = hash,
-   |      mediaType = mediaType,
-   |      isReference = false  // owns the file
+   |  +------------------------------------------------+
+   |  | 4a. Generate thumbnail → cacheDir/thumbnails/  |
+   |  +------------------------------------------------+
+   |       |
+   |       v
+   |  Return MediaFileEntity(
+   |      mediaStoreUri = resolvedUri.toString(),
+   |      source = EXTERNAL,
+   |      fileHash = hash,
+   |      // + cached metadata fields
+   |  )
+   |                                                    |
+   +--- IMPORTED (copy to Memly) ----------------------+
+   |                                                    |
+   |  +------------------------------------------------+
+   |  | 2b. Compute hash, check dedup                  |
+   |  |     val existing = findMediaByHash(hash)       |
+   |  |     IF EXISTS: reuse existing URI, skip copy   |
+   |  +------------------------------------------------+
+   |       |
+   |       +--- NOT EXISTS:
+   |       |
+   |  +------------------------------------------------+
+   |  | 3b. Copy to Pictures/Memly/ via MediaStore     |
+   |  |     insert + openOutputStream + copyTo         |
+   |  +------------------------------------------------+
+   |       |
+   |       v
+   |  +------------------------------------------------+
+   |  | 4b. Generate thumbnail → cacheDir/thumbnails/  |
+   |  +------------------------------------------------+
+   |       |
+   |       v
+   |  Return MediaFileEntity(
+   |      mediaStoreUri = newUri.toString(),
+   |      source = IMPORTED,
+   |      fileHash = hash,
+   |      // + cached metadata fields
    |  )
    +----------------------------------------------------+
 ```
@@ -671,13 +730,11 @@ Key properties:
 - Streams in 8KB chunks -- constant memory usage regardless of file size.
 - Returns a 64-character lowercase hex string.
 - The caller is responsible for closing the InputStream.
+- Works with any content:// URI via `contentResolver.openInputStream()`.
 
 ### 3.4 File Deletion Strategy
 
-When a memory is deleted, Room's CASCADE constraint automatically deletes the
-associated `MediaFileEntity` rows. However, the physical files on disk require
-separate cleanup because multiple `MediaFileEntity` rows may reference the same
-physical file (via content-addressed storage).
+Deletion behavior depends on the `MediaSource` of the file.
 
 #### Deletion Flow
 
@@ -686,10 +743,9 @@ deleteMemoryWithCleanup(memory: MemoryEntity)
    |
    v
 +----------------------------------------------------------+
-| 1. Collect hashes BEFORE deletion                        |
+| 1. Collect media files BEFORE deletion                   |
 |    val mediaFiles = memoryDao                             |
 |        .getMediaFilesForMemorySync(memory.id)            |
-|    val hashes = mediaFiles.map { it.fileHash }            |
 +----------------------------------------------------------+
    |
    v
@@ -701,61 +757,78 @@ deleteMemoryWithCleanup(memory: MemoryEntity)
    |
    v
 +----------------------------------------------------------+
-| 3. For each hash, check if any other MediaFileEntity     |
-|    still references it                                   |
+| 3. For each media file, handle by source:                |
 |                                                          |
-|    FOR hash IN hashes:                                    |
-|      val count = memoryDao.countMediaByHash(hash)         |
-|      // SELECT COUNT(*) FROM media_files                  |
-|      //   WHERE fileHash = :hash                          |
+|    FOR mediaFile IN mediaFiles:                           |
 |                                                          |
-|      IF count == 0:                                       |
-|        File(filesDir, "media/${hash}.${ext}").delete()    |
-|        File(filesDir, "thumbnails/${hash}_thumb.jpg")     |
-|            .delete()                                     |
+|      IF source == EXTERNAL:                               |
+|        // Do nothing. Only DB row was deleted.            |
+|        // Never touch the original file.                  |
+|                                                          |
+|      IF source == APP_OWNED or IMPORTED:                  |
+|        // Check if other memories still reference hash    |
+|        val count = memoryDao.countMediaByHash(hash)       |
+|        IF count == 0:                                     |
+|          try:                                             |
+|            contentResolver.delete(mediaStoreUri)          |
+|          catch:                                           |
+|            // Scoped storage restriction (Android 11+)    |
+|            // Fall back to createDeleteRequest()          |
+|          // Also delete thumbnail from cache              |
 +----------------------------------------------------------+
 ```
 
-#### Required DAO Addition
+#### Required DAO Queries
 
 ```kotlin
 @Query("SELECT COUNT(*) FROM media_files WHERE fileHash = :hash")
 suspend fun countMediaByHash(hash: String): Int
 ```
 
-**Important:** This cleanup is performed in the Repository layer, NOT via Room
-CASCADE. Room CASCADE only handles row deletion; file deletion is application logic.
+**Important:** File deletion is performed in the Repository layer via `MediaStoreManager`,
+NOT via Room CASCADE. Room CASCADE only handles row deletion; file deletion is application logic.
 
-### 3.5 Missing File Handling
+### 3.5 Broken Reference Handling
 
-Files can go missing if the user clears app data, if storage is corrupted, or if an
-external file manager deletes them. The app must handle this gracefully.
+External references can break if the user deletes the original from their gallery,
+or if a persisted SAF URI permission is revoked.
 
 ```
-When displaying media (in list or detail):
+When loading memory list or opening detail:
    |
    v
-+------------------------------------------+
-| Check: File(mediaFile.filePath).exists() |
-+------------------------------------------+
++------------------------------------------------------+
+| For each EXTERNAL media item:                        |
+|   contentResolver.query(mediaStoreUri) != null ?     |
++------------------------------------------------------+
    |
-   +--- EXISTS ---> Load normally with Coil AsyncImage
+   +--- AVAILABLE ---> Load normally with Coil AsyncImage
    |
-   +--- MISSING:
+   +--- UNAVAILABLE:
         |
-        +--- Is thumbnail available?
+        +--- Is thumbnail available in cache?
         |    |
         |    +--- YES ---> Show thumbnail as fallback
         |    +--- NO  ---> Show placeholder:
         |                   - Surface-variant colored box
-        |                   - "File not found" text
+        |                   - "Original file removed" text
         |                   - Broken-image icon
+        |                   - Option to remove from memory
         |
         +--- Do NOT delete the MemoryEntity
         |    (metadata like title, notes, tags is still valuable)
         |
         +--- Log warning for diagnostics
 ```
+
+### 3.6 Permissions by API Level
+
+| API Level | Requirement |
+|-----------|-------------|
+| 28 (Android 9) | `WRITE_EXTERNAL_STORAGE` for writing to public dirs |
+| 29+ (Android 10+) | No permission needed for MediaStore inserts (app owns entries) |
+| 30+ (Android 11+) | `createDeleteRequest()` available for delete confirmation |
+| 33+ (Android 13+) | `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`, `READ_MEDIA_AUDIO` for reading EXTERNAL references |
 
 ---
 

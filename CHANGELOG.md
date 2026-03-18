@@ -4,6 +4,33 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Phase 2, Section 0: File Management Refactor (Planning)
+**Date:** 2026-03-18
+
+### Planned (Not Yet Implemented)
+- Refactored file storage architecture from app-private (`filesDir/media/`) to public MediaStore-based storage
+- Added `MediaSource` enum: `APP_OWNED`, `EXTERNAL`, `IMPORTED` — three-state ownership model
+- In-app content (camera, audio) → saved directly to `Pictures/Memly/`, `Movies/Memly/`, `Music/Memly/` via MediaStore API
+- Picked gallery content → user chooses: reference only (EXTERNAL, zero storage cost) or save to Memly (IMPORTED, copied)
+- URI resolution: PhotoPicker URI → MediaStore content URI, with SAF `takePersistableUriPermission()` fallback for cloud providers
+- File naming convention: `memly_<yyyyMMdd_HHmmss>_<shortId>.<ext>`
+- Media metadata cached in entity: `mimeType`, `size`, `dateTaken`, `width`, `height`
+- Deletion by source: owned/imported → ContentResolver delete (with `createDeleteRequest` fallback), external → DB row only
+- SHA-256 dedup: on hash match for IMPORTED → reuse existing file, skip copy
+- Broken reference handling: availability check on list load, placeholder for missing files
+- "Import to Memly" action: converts EXTERNAL → IMPORTED from detail screen
+- Orphan cleanup tool added to Section 6 (Data Management)
+
+### Updated Docs
+- `docs/phase2-tasks.md` — Added Section 0 (14 tasks) as priority prerequisite; updated Sections 1 and 6
+- `docs/Architecture.md` — Rewrote Section 9 (File Management Architecture)
+- `docs/system-design.md` — Rewrote Section 3 (File Management System)
+- `memory/progress.md` — Added Section 0 to Phase 2 tracker, updated next pointer
+- `memory/patterns.md` — Updated File Management section with new patterns
+- `memory/decisions.md` — Superseded D006/D023, added D055-D060
+
+---
+
 ## Navigation & Screen Redesign
 **Date:** 2026-03-17
 

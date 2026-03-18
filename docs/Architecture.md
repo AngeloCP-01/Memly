@@ -328,56 +328,112 @@ File operations (hashing, thumbnail generation, file copying) run on `Dispatcher
 
 ## 9. File Management Architecture
 
-Memly stores references to media files rather than embedding binary data in the database. This keeps the database small and performant while supporting photos, videos, and audio.
+Memly uses **public MediaStore-based storage** for media files. Content created in-app is saved to public directories visible in the gallery. Content picked from gallery is referenced by URI or optionally imported. This ensures files survive app uninstall and avoids storage duplication.
 
-### Reference-First Approach
+### Three-State Ownership Model (MediaSource)
 
-Media files are stored in the app's internal storage directory. The database stores only the file path (as a string field on `MediaFileEntity`), not the file contents. This means:
+```kotlin
+enum class MediaSource {
+    APP_OWNED,   // Created in-app (camera/recording), lives in Pictures/Memly/
+    EXTERNAL,    // URI reference to user's gallery photo, zero storage cost
+    IMPORTED     // User chose "Save to Memly", copied to Pictures/Memly/
+}
+```
 
-- The database remains small regardless of how many photos or videos a user attaches.
-- File I/O is decoupled from database transactions.
-- Files can be managed (moved, backed up) independently of the database.
+| Source | Storage Location | Storage Cost | Survives Uninstall | App Controls File |
+|--------|-----------------|-------------|-------------------|-------------------|
+| APP_OWNED | `Pictures/Memly/`, `Movies/Memly/`, `Music/Memly/` | Only copy | Yes | Yes |
+| EXTERNAL | User's original location | Zero | Yes (file stays) | No |
+| IMPORTED | `Pictures/Memly/` | Copy | Yes | Yes |
+
+### MediaStore-First Approach
+
+All file I/O goes through `MediaStoreManager`, a utility class that wraps `ContentResolver` and handles API level branching (Android 9 legacy vs 10+ scoped storage).
+
+- **In-app content** (camera, audio recording) → `MediaStoreManager.insertMedia()` writes directly to public storage via MediaStore API.
+- **Picked content** → user chooses: reference only (EXTERNAL) or save to Memly (IMPORTED).
+- Database stores `mediaStoreUri` (content URI), not absolute file paths.
+- File naming convention: `memly_<yyyyMMdd_HHmmss>_<shortId>.<ext>`
+
+### URI Resolution Strategy
+
+PhotoPicker URIs are **temporary** and must not be stored directly.
+
+```
+PhotoPicker returns content:// URI
+    │
+    ▼
+Attempt: Resolve to stable MediaStore content URI (query by _ID)
+    │
+    ├── SUCCESS: Store MediaStore URI
+    │
+    └── FAILURE (cloud-backed provider like Google Photos):
+        └── Fallback: takePersistableUriPermission() on original URI
+```
 
 ### Hash-Based Deduplication
 
-When a user attaches a media file to a memory, the app computes a SHA-256 hash of the file contents using `FileHashUtil`.
+SHA-256 hash computed for all media via `FileHashUtil`. Dedup behavior by source:
 
-```
-User selects file
-    │
-    ▼
-FileHashUtil.computeHash(file) -> SHA-256 hex string
-    │
-    ▼
-Query: Does a MediaFileEntity with this hash already exist?
-    │
-    ├── YES: Reuse existing file path, create new association
-    │
-    └── NO:  Copy file to internal storage, create new MediaFileEntity
-```
+- **IMPORTED** (hash match) → reuse existing file URI, skip copy
+- **EXTERNAL** (hash match) → just add reference, no file to dedup
+- **APP_OWNED** → always new file (camera/recording produces unique content)
 
-This prevents storing duplicate copies of the same image or video, saving device storage. The hash is stored as a column on `MediaFileEntity` and indexed for fast lookup.
+### Deletion Strategy
+
+| Source | On Memory Delete |
+|--------|-----------------|
+| APP_OWNED | Delete file via ContentResolver + delete DB row |
+| IMPORTED | Delete file via ContentResolver + delete DB row |
+| EXTERNAL | Delete DB row only — never touch original file |
+
+If ContentResolver deletion fails (scoped storage edge case on Android 11+), fall back to `MediaStore.createDeleteRequest()` for user confirmation.
+
+### Metadata Caching
+
+`MediaFileEntity` caches media metadata at capture time to avoid repeated MediaStore queries:
+- `mimeType`, `size`, `dateTaken`, `width`, `height`
 
 ### Thumbnail Generation
 
-`ThumbnailUtil` generates smaller preview images for photos and video keyframes. Thumbnails are used in list views (Timeline, Search results) to avoid loading full-resolution images into memory.
+`ThumbnailUtil` generates smaller preview images for photos and video keyframes. Thumbnails remain in **app-private cache** (small, regenerable).
 
 - Thumbnails are generated asynchronously on `Dispatchers.IO` when a media file is first attached.
-- Thumbnail file paths are stored on `MediaFileEntity` alongside the original file path.
+- Thumbnail file paths are stored on `MediaFileEntity`.
 - Coil handles loading thumbnails in Compose UI with built-in memory and disk caching.
 - If a thumbnail is missing (e.g., cleared from cache), it is regenerated on demand.
 
 ### File Storage Layout
 
 ```
-app-internal-storage/
-├── media/
-│   ├── {hash1}.jpg
-│   ├── {hash2}.mp4
-│   └── {hash3}.aac
-└── thumbnails/
-    ├── {hash1}_thumb.jpg
-    └── {hash2}_thumb.jpg
+Public storage (survives uninstall):
+├── Pictures/Memly/
+│   ├── memly_20260318_143022_a7f3.jpg    (APP_OWNED / IMPORTED)
+│   └── memly_20260318_150511_b2c1.jpg
+├── Movies/Memly/
+│   └── memly_20260318_160000_c4d2.mp4
+└── Music/Memly/
+    └── memly_20260318_170000_e5f3.aac
+
+App-private cache (regenerable):
+└── cacheDir/thumbnails/
+    ├── a7f3_thumb.jpg
+    └── c4d2_thumb.jpg
 ```
 
-Files are named by their content hash, which naturally prevents collisions and makes deduplication straightforward. Original file metadata (original filename, MIME type, dimensions) is stored in the `MediaFileEntity` database record.
+### Permissions
+
+| API Level | Requirement |
+|-----------|-------------|
+| 28 (Android 9) | `WRITE_EXTERNAL_STORAGE` for writing to public dirs |
+| 29+ (Android 10+) | No permission needed for MediaStore inserts |
+| 30+ (Android 11+) | `createDeleteRequest()` available for delete confirmation |
+| 33+ (Android 13+) | `READ_MEDIA_IMAGES/VIDEO/AUDIO` to read external references |
+
+### Broken Reference Handling
+
+External references can break if the user deletes the original from their gallery.
+
+- Availability checked via lightweight `ContentResolver.query()` when loading memory list
+- Broken references show "Original file removed" placeholder with option to remove from memory
+- Memory metadata (title, notes, tags) is preserved even when media is unavailable

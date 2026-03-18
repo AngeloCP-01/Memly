@@ -15,15 +15,16 @@
 
 ## Phase 2: Enhanced Experience
 
-| # | Section              | Status      |
-|---|----------------------|-------------|
-| 1 | Voice Memos          | NOT STARTED |
-| 2 | Video Playback       | NOT STARTED |
-| 3 | Enhanced Capture     | NOT STARTED |
-| 4 | Onboarding Flow      | NOT STARTED |
-| 5 | Theme & UI Polish    | COMPLETE    |
-| 6 | Data Management      | NOT STARTED |
-| 7 | Integration & Polish | NOT STARTED |
+| # | Section                        | Status      |
+|---|--------------------------------|-------------|
+| 0 | File Management Refactor       | NOT STARTED |
+| 1 | Voice Memos                    | NOT STARTED |
+| 2 | Video Playback                 | NOT STARTED |
+| 3 | Enhanced Capture               | NOT STARTED |
+| 4 | Onboarding Flow                | NOT STARTED |
+| 5 | Theme & UI Polish              | COMPLETE    |
+| 6 | Data Management                | NOT STARTED |
+| 7 | Integration & Polish           | NOT STARTED |
 
 ## Ad-hoc
 
@@ -37,4 +38,4 @@
 ## Current Pointer
 
 - **Last completed:** Navigation & Screen Redesign (2026-03-17) — Bottom nav overhaul (Map + Settings icons), Search screen removed, functional search + filter on Timeline & Collections, Settings/Collections redesigned as top-level nav destinations
-- **Next:** Phase 2, Section 1 -- Voice Memos (or any other Phase 2 section)
+- **Next:** Phase 2, Section 0 -- File Management Refactor (priority prerequisite for all other Phase 2 sections)

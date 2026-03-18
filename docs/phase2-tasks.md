@@ -14,6 +14,7 @@
 ## Dependency Map
 
 ```
+Section 0 (File Management) ──> ALL SECTIONS (must complete first)
 Section 1 (Voice Memos)  ──┐
 Section 2 (Video Playback)  ├──> Section 7 (Integration)
 Section 3 (Enhanced Capture)│
@@ -22,23 +23,70 @@ Section 5 (Theme Polish)   ─┤
 Section 6 (Data Management) ┘
 ```
 
-Sections 1 through 6 are mostly independent and can proceed in parallel.
+**Section 0 is a prerequisite for all other sections.** It refactors file storage from app-private to public MediaStore-based storage. Sections 1 (Voice Memos), 2 (Video), and 3 (Enhanced Capture) all depend on the new file management layer.
+Sections 1 through 6 are mostly independent and can proceed in parallel after Section 0.
 Section 7 depends on all prior sections and is the final integration pass.
 
 ---
 
 ## Summary Table
 
-| Section | Name                 | Tasks | Complexity | Risk   |
-|---------|----------------------|-------|------------|--------|
-| 1       | Voice Memos          | 8     | Medium     | Medium |
-| 2       | Video Playback       | 7     | Medium     | Medium |
-| 3       | Enhanced Capture     | 6     | Low        | Low    |
-| 4       | Onboarding Flow      | 6     | Low        | Low    |
-| 5       | Theme & UI Polish    | 8     | Low        | Low    |
-| 6       | Data Management      | 9     | High       | Medium |
-| 7       | Integration & Polish | 5     | Medium     | Medium |
-|         | **Total**            | **49**|            |        |
+| Section | Name                          | Tasks | Complexity | Risk   |
+|---------|-------------------------------|-------|------------|--------|
+| **0**   | **File Management Refactor**  | **14**| **High**   | **High** |
+| 1       | Voice Memos                   | 8     | Medium     | Medium |
+| 2       | Video Playback                | 7     | Medium     | Medium |
+| 3       | Enhanced Capture              | 6     | Low        | Low    |
+| 4       | Onboarding Flow               | 6     | Low        | Low    |
+| 5       | Theme & UI Polish             | 8     | Low        | Low    |
+| 6       | Data Management               | 10    | High       | Medium |
+| 7       | Integration & Polish          | 5     | Medium     | Medium |
+|         | **Total**                     | **64**|            |        |
+
+---
+
+## Section 0: File Management Refactor (Priority)
+
+**Status:** NOT STARTED
+
+Refactor file storage from app-private (`filesDir/media/`) to public MediaStore-based storage. Content created in-app (camera, audio) is saved directly to public directories (`Pictures/Memly/`, `Movies/Memly/`, `Music/Memly/`) — visible in gallery, survives uninstall. Content picked from gallery is referenced by URI or optionally imported. App stores MediaStore URIs in Room instead of absolute file paths.
+
+**Design Decisions:**
+- **In-app content** (camera photo/video, audio recording) → write directly to public storage via MediaStore API (`MediaSource.APP_OWNED`). Only copy that exists. Survives uninstall. Visible in gallery/file manager.
+- **Picked content** (selected from gallery) → user chooses: reference only (`MediaSource.EXTERNAL`) or save to Memly (`MediaSource.IMPORTED`). Reference = zero duplication but can break. Import = copy to `Pictures/Memly/`, app owns it.
+- **URI persistence** → For external references, first attempt to resolve PhotoPicker URI to a stable **MediaStore content URI** (query by `_ID`). If resolution fails (cloud-backed providers like Google Photos), fall back to `takePersistableUriPermission()` on the original URI. PhotoPicker URIs are temporary and MUST NOT be stored directly — always resolve or persist.
+- **Media metadata caching** → Store `mimeType`, `size`, `dateTaken`, `width`, `height` in entity at capture time. Avoids repeated MediaStore queries for display.
+- **Deletion logic** → `APP_OWNED`/`IMPORTED`: delete via ContentResolver directly. If deletion fails (scoped storage edge case on Android 11+), fall back to `MediaStore.createDeleteRequest()` for user confirmation. `EXTERNAL`: only remove the Room reference, never touch the original file.
+- **Deduplication** → On import/save, compute SHA-256 hash. If hash already exists in DB: for `IMPORTED`, reuse existing file URI (skip copy). For `EXTERNAL`, just reference (no file to dedup). Prevents duplicate storage.
+- **File naming** → Structured convention: `memly_<yyyyMMdd_HHmmss>_<shortId>.<ext>` (e.g. `memly_20260318_143022_a7f3.jpg`). Clean, sortable, traceable, no collisions.
+- **Text/mood/tags** → Room DB only (unchanged).
+- **Thumbnails** → app-private cache (small, regenerable, unchanged).
+- **Permissions:** No permission needed for MediaStore inserts on Android 10+. `WRITE_EXTERNAL_STORAGE` for Android 9 (our minSdk 28). `READ_MEDIA_IMAGES/VIDEO/AUDIO` for Android 13+ to read referenced files.
+
+**Risks:**
+- High. Touches the entire file management layer: entity schema, DAO, repository, capture flow, detail display, and timeline cards.
+- URI fragility: PhotoPicker URIs are temporary (must resolve to MediaStore URI or persist via SAF). Cloud-backed providers (Google Photos) may not resolve to MediaStore — SAF fallback required. External references can break if user deletes original from gallery — must handle gracefully.
+- Room migration required for existing data (dev-only at this stage, so destructive migration is acceptable).
+- Must handle API level differences (Android 9 vs 10+ vs 13+).
+
+| Task | Description                                                                 | Status | Notes                                                         |
+|------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
+| 0.1  | Create `MediaSource` enum (`APP_OWNED`, `EXTERNAL`, `IMPORTED`)             | ⬜     | Replaces boolean flag. `APP_OWNED` = created in-app (camera/recording), lives in `Pictures/Memly/`. `EXTERNAL` = reference to user's gallery photo, URI only. `IMPORTED` = user chose "Save to Memly", copied to `Pictures/Memly/`, app owns it. |
+| 0.2  | Create `MediaStoreManager` utility class for all MediaStore operations      | ⬜     | Insert, query, resolve, delete via ContentResolver. Handles API level branching (Android 9 legacy vs 10+ scoped storage). Includes: `insertMedia()`, `resolveUri()` (try MediaStore resolution first → fall back to `takePersistableUriPermission()` for cloud-backed URIs), `deleteOwnedMedia()` (with `createDeleteRequest()` fallback on Android 11+), `queryMetadata()`. File naming: `memly_<yyyyMMdd_HHmmss>_<shortId>.<ext>`. Single source of truth for all public storage I/O. |
+| 0.3  | Update `MediaFileEntity` schema with new fields                             | ⬜     | Replace `filePath` → `mediaStoreUri: String`. Replace `isReference: Boolean` → `source: MediaSource`. Add: `relativePath`, `displayName`, `mimeType`, `size: Long`, `dateTaken: Long?`, `width: Int?`, `height: Int?`. Cache metadata at capture time to avoid repeated MediaStore queries. Destructive migration OK (dev stage). |
+| 0.4  | Update `MemoryDao` queries for new `MediaFileEntity` fields                 | ⬜     | Update any queries referencing old `filePath` column. Add query to find media by `mediaStoreUri`. Add query to find media by `source` type. |
+| 0.5  | Update `MemoryRepository` to use `MediaStoreManager` for all file operations | ⬜    | Replace direct file I/O with MediaStore calls. Save in-app content to public dirs. Handle deletion by source: `APP_OWNED`/`IMPORTED` → delete file via ContentResolver (fall back to `createDeleteRequest()` if scoped storage blocks it) + delete DB row, `EXTERNAL` → delete DB row only, never touch original file. |
+| 0.6  | Add permission handling: `WRITE_EXTERNAL_STORAGE` (API 28), `READ_MEDIA_*` (API 33+) | ⬜ | Runtime permission requests. No permission needed for MediaStore inserts on API 29+. `READ_MEDIA_*` needed to access external references on Android 13+. |
+| 0.7  | Update `CaptureViewModel` save flow: in-app camera → MediaStore insert to `Pictures/Memly/` | ⬜ | Photos/videos taken via camera are saved directly to public storage. Store returned MediaStore URI in entity. Set `source = APP_OWNED`. Cache metadata (size, mimeType, dimensions) at save time. |
+| 0.8  | Update `CaptureViewModel` save flow: picked media → user choice dialog      | ⬜     | Show dialog: "Keep in original location" (reference, `EXTERNAL`) vs "Save to Memly" (copy to `Pictures/Memly/`, `IMPORTED`). When user picks "Keep original", show subtle warning: *"If the original is deleted from your gallery, this photo may no longer appear in Memly."* For `EXTERNAL`: resolve via `MediaStoreManager.resolveUri()` — tries MediaStore URI first, falls back to `takePersistableUriPermission()` for cloud-backed providers. Never store raw PhotoPicker URIs. |
+| 0.9  | Update `FileHashUtil` to compute hash from content URI (InputStream)        | ⬜     | Must work with both `content://` URIs and MediaStore URIs. Used for dedup check across all source types. **Dedup behavior:** on hash match for `IMPORTED` → reuse existing file URI, skip copy. For `EXTERNAL` → just add reference (no file to dedup). |
+| 0.10 | Update `ThumbnailUtil` to generate thumbnails from content URIs             | ⬜     | Thumbnails still saved to app-private cache. Must handle both owned and external URIs. |
+| 0.11 | Update all UI screens to load media from URIs instead of file paths         | ⬜     | Timeline cards, MemoryDetailScreen, CaptureScreen preview. Coil supports content URIs natively. Use cached `width`/`height` for aspect ratio placeholders. |
+| 0.12 | Add broken reference handling: detect unavailable URIs, show placeholder    | ⬜     | When external reference is broken (file deleted from gallery), show "Original file removed" placeholder with option to remove from memory. Check availability when loading memory list (lightweight `ContentResolver.query()` existence check on `EXTERNAL` items). No background job — checked at list load and detail open. |
+| 0.13 | "Import to Memly" action for external references                            | ⬜     | Converts `EXTERNAL` → `IMPORTED`. Copies file to `Pictures/Memly/` via MediaStoreManager. Updates entity with new URI and `source = IMPORTED`. Available from MemoryDetailScreen context menu. Protects the file from future deletion by user in gallery. |
+| 0.14 | Verify: full end-to-end flow                                                | ⬜     | Test: (1) camera capture saves to `Pictures/Memly/`, visible in gallery. (2) picked photo with "Keep original" → reference works, shows in app. (3) picked photo with "Save to Memly" → copied, app-owned. (4) "Import to Memly" converts reference → owned. (5) files persist after app uninstall. (6) deleting external original → placeholder shown. (7) deleting app-owned memory → file removed from public storage. |
+
+**Checkpoint:** All media files created in-app are stored in public directories via MediaStore and survive app uninstall. Users choose whether picked photos are referenced or imported. Three-state `MediaSource` model handles ownership correctly. Metadata is cached in Room. Broken references show a placeholder. "Import to Memly" converts external references to owned files.
 
 ---
 
@@ -55,9 +103,9 @@ Add audio recording support so users can attach voice memos to memories during c
 | Task | Description                                                                 | Status | Notes                                                         |
 |------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
 | 1.1  | Add MediaRecorder permission (RECORD_AUDIO) to AndroidManifest             | ⬜     | Runtime permission request required on API 23+                |
-| 1.2  | Create AudioRecorder utility class (start/stop/save using MediaRecorder)    | ⬜     | Wrap MediaRecorder lifecycle; output to app-private storage    |
+| 1.2  | Create AudioRecorder utility class (start/stop/save using MediaRecorder)    | ⬜     | Wrap MediaRecorder lifecycle; output to `Music/Memly/` via MediaStoreManager |
 | 1.3  | Add voice memo UI to CaptureScreen (record button, playback preview, delete) | ⬜    | Integrate into existing capture form layout                    |
-| 1.4  | Store audio files in app storage with hash dedup (reuse FileHashUtil)       | ⬜     | SHA-256 hash check before saving; consistent with media dedup  |
+| 1.4  | Store audio files in public storage via MediaStoreManager with hash dedup   | ⬜     | SHA-256 hash check before saving; uses new MediaStore flow from Section 0 |
 | 1.5  | Add AUDIO to MediaType enum                                                 | ⬜     | Update Room entity and any exhaustive when-blocks              |
 | 1.6  | Create audio playback component (play/pause/seek) using MediaPlayer         | ⬜     | Composable with seekbar and elapsed time display               |
 | 1.7  | Display audio indicator on MemoryCard and DetailScreen                       | ⬜     | Icon or badge showing memory has attached audio                |
@@ -172,15 +220,16 @@ Backup, restore, and export functionality for data safety and portability.
 |------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
 | 6.1  | Create BackupRepository with export and import logic                        | ⬜     | Central class coordinating serialization and file I/O          |
 | 6.2  | JSON full backup: serialize all Room data (memories, media metadata, tags, collections) to JSON | ⬜ | Use kotlinx.serialization or Gson; write to external/shared storage |
-| 6.3  | Include media file references (paths) in backup metadata                    | ⬜     | Store relative paths so backup is somewhat portable            |
+| 6.3  | Include media file references (MediaStore URIs + relative paths) in backup metadata | ⬜ | Store `relativePath` + `displayName` for portability; URIs for same-device restore |
 | 6.4  | JSON import: deserialize and insert into Room, handle conflicts (skip duplicates by hash) | ⬜ | Transaction-based insert; report skipped count to user        |
 | 6.5  | CSV export: export memories as CSV (date, title, notes, mood, location, tags) | ⬜   | Flat format for spreadsheet consumption; escape commas in text |
 | 6.6  | Share backup file via Android share sheet (ACTION_SEND)                     | ⬜     | Use FileProvider to share the JSON file                        |
 | 6.7  | Share CSV via share sheet                                                   | ⬜     | Same share mechanism as JSON backup                            |
 | 6.8  | Add backup/restore and export options to SettingsScreen                     | ⬜     | New section in settings with list items for each action        |
-| 6.9  | Verify: export JSON, clear data, import JSON, all memories restored         | ⬜     | Round-trip test confirming data integrity after restore         |
+| 6.9  | Orphan file cleanup: scan `Pictures/Memly/` for files not referenced in DB  | ⬜     | Dev/settings tool: query `Pictures/Memly/` via MediaStore, compare against DB entries, offer to delete unreferenced files. Handles cases where DB row was deleted but file deletion failed (crash, user cancelled). |
+| 6.10 | Verify: export JSON, clear data, import JSON, all memories restored         | ⬜     | Round-trip test confirming data integrity after restore. Also verify orphan cleanup correctly identifies and removes unreferenced files. |
 
-**Checkpoint:** Users can export a full JSON backup and a CSV summary. Backups can be shared via the system share sheet. Importing a backup restores all memories, skipping duplicates. Settings screen provides access to all data management actions.
+**Checkpoint:** Users can export a full JSON backup and a CSV summary. Backups can be shared via the system share sheet. Importing a backup restores all memories, skipping duplicates. Orphan cleanup removes unreferenced files from Memly's public folder. Settings screen provides access to all data management actions.
 
 ---
 

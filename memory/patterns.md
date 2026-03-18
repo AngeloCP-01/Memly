@@ -62,13 +62,21 @@
 - Location uses `FusedLocationProviderClient.getCurrentLocation()` with cancellation token
 - Duplicate media detected by SHA-256 hash before insert
 
-## File Management
+## File Management (MediaStore-Based — Planned Refactor, Section 0)
 
-- Media files copied to `filesDir/media/` with UUID filenames
-- Thumbnails stored in `cacheDir/thumbnails/`
+- **In-app content** (camera, audio) → saved to public storage via MediaStore API: `Pictures/Memly/`, `Movies/Memly/`, `Music/Memly/`
+- **Picked content** (gallery) → user chooses: reference only (`EXTERNAL`) or copy to Memly (`IMPORTED`)
+- **MediaSource enum:** `APP_OWNED` (created in-app), `EXTERNAL` (URI reference), `IMPORTED` (user copied to Memly)
+- **URI resolution:** PhotoPicker URI → resolve to MediaStore content URI. Fallback: `takePersistableUriPermission()` for cloud-backed providers
+- **File naming:** `memly_<yyyyMMdd_HHmmss>_<shortId>.<ext>`
+- **Metadata cached in entity:** `mimeType`, `size`, `dateTaken`, `width`, `height` — avoids repeated MediaStore queries
+- **Dedup:** SHA-256 hash. On hash match for IMPORTED → reuse existing file. For EXTERNAL → just reference
+- **Deletion:** APP_OWNED/IMPORTED → ContentResolver delete (createDeleteRequest fallback on Android 11+). EXTERNAL → DB row only
+- **Thumbnails** still in `cacheDir/thumbnails/` (app-private, regenerable)
 - Camera temp photos stored in `cacheDir/camera/`
 - FileProvider paths defined in `res/xml/file_paths.xml`
 - Video thumbnails extracted via `MediaMetadataRetriever.getFrameAtTime()`
+- **MediaStoreManager** utility class: single source of truth for all public storage I/O
 
 ## Timeline
 
