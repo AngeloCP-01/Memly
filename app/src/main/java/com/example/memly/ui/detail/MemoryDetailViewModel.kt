@@ -9,12 +9,17 @@ import android.util.Log
 import com.example.memly.data.local.entity.CollectionEntity
 import com.example.memly.data.local.entity.MediaFileEntity
 import com.example.memly.data.local.entity.MediaSource
+import com.example.memly.data.local.entity.MediaType
 import com.example.memly.data.local.entity.MemoryEntity
 import com.example.memly.data.local.entity.Mood
 import com.example.memly.data.local.entity.TagEntity
 import com.example.memly.data.repository.CollectionRepository
 import com.example.memly.data.repository.MemoryRepository
+import com.example.memly.ui.capture.ImportChoice
+import com.example.memly.ui.capture.MediaItem
+import com.example.memly.util.FileHashUtil
 import com.example.memly.util.MediaStoreManager
+import com.example.memly.util.ThumbnailUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +30,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
 
 data class DetailUiState(
@@ -43,6 +49,11 @@ data class DetailUiState(
     val editPlaceLabel: String = "",
     val editTags: List<String> = emptyList(),
     val editTagInput: String = "",
+    // Edit media
+    val editRemovedMediaIds: Set<Long> = emptySet(),
+    val editNewMediaItems: List<MediaItem> = emptyList(),
+    val showImportChoiceDialog: Boolean = false,
+    val pendingPickedUris: List<Pair<Uri, MediaType>> = emptyList(),
     // Collections
     val showCollectionDialog: Boolean = false,
     val allCollections: List<CollectionEntity> = emptyList(),
@@ -139,13 +150,23 @@ class MemoryDetailViewModel @Inject constructor(
                 editMood = memory.mood,
                 editPlaceLabel = memory.placeLabel ?: "",
                 editTags = state.tags.map { tag -> tag.name },
-                editTagInput = ""
+                editTagInput = "",
+                editRemovedMediaIds = emptySet(),
+                editNewMediaItems = emptyList()
             )
         }
     }
 
     fun cancelEditing() {
-        _uiState.update { it.copy(isEditing = false) }
+        _uiState.update {
+            it.copy(
+                isEditing = false,
+                editRemovedMediaIds = emptySet(),
+                editNewMediaItems = emptyList(),
+                showImportChoiceDialog = false,
+                pendingPickedUris = emptyList()
+            )
+        }
     }
 
     fun updateEditTitle(title: String) {
@@ -179,6 +200,174 @@ class MemoryDetailViewModel @Inject constructor(
         _uiState.update { it.copy(editTags = it.editTags - tag) }
     }
 
+    // --- Media editing methods ---
+
+    fun markMediaForRemoval(mediaId: Long) {
+        _uiState.update { it.copy(editRemovedMediaIds = it.editRemovedMediaIds + mediaId) }
+    }
+
+    fun unmarkMediaForRemoval(mediaId: Long) {
+        _uiState.update { it.copy(editRemovedMediaIds = it.editRemovedMediaIds - mediaId) }
+    }
+
+    fun addPickedMedia(uris: List<Pair<Uri, MediaType>>) {
+        _uiState.update {
+            it.copy(showImportChoiceDialog = true, pendingPickedUris = uris)
+        }
+    }
+
+    fun onImportChoiceMade(saveToMemly: Boolean) {
+        val pending = _uiState.value.pendingPickedUris
+        val choice = if (saveToMemly) ImportChoice.SAVE_TO_MEMLY else ImportChoice.KEEP_ORIGINAL
+        val items = pending.map { (uri, type) ->
+            MediaItem(uri = uri, mediaType = type, isFromCamera = false, importChoice = choice)
+        }
+        _uiState.update {
+            it.copy(
+                editNewMediaItems = it.editNewMediaItems + items,
+                showImportChoiceDialog = false,
+                pendingPickedUris = emptyList()
+            )
+        }
+    }
+
+    fun dismissImportChoice() {
+        _uiState.update {
+            it.copy(showImportChoiceDialog = false, pendingPickedUris = emptyList())
+        }
+    }
+
+    fun hideImportChoiceDialog() {
+        _uiState.update { it.copy(showImportChoiceDialog = false) }
+    }
+
+    fun addCameraMedia(uri: Uri) {
+        val item = MediaItem(uri = uri, mediaType = MediaType.PHOTO, isFromCamera = true)
+        _uiState.update { it.copy(editNewMediaItems = it.editNewMediaItems + item) }
+    }
+
+    fun removeNewMedia(index: Int) {
+        _uiState.update {
+            it.copy(editNewMediaItems = it.editNewMediaItems.toMutableList().apply { removeAt(index) })
+        }
+    }
+
+    private suspend fun processMediaItem(
+        item: MediaItem,
+        thumbDir: File
+    ): MediaFileEntity? = withContext(Dispatchers.IO) {
+        val context = appContext
+
+        val hash = context.contentResolver.openInputStream(item.uri)?.use { inputStream ->
+            FileHashUtil.computeSha256(inputStream)
+        } ?: return@withContext null
+
+        val existing = memoryRepository.findMediaByHash(hash)
+        if (existing != null) {
+            return@withContext MediaFileEntity(
+                memoryId = memoryId,
+                mediaStoreUri = existing.mediaStoreUri,
+                thumbnailPath = existing.thumbnailPath,
+                fileHash = hash,
+                mediaType = existing.mediaType,
+                source = existing.source,
+                relativePath = existing.relativePath,
+                displayName = existing.displayName,
+                mimeType = existing.mimeType,
+                size = existing.size,
+                dateTaken = existing.dateTaken,
+                width = existing.width,
+                height = existing.height,
+                durationMs = existing.durationMs
+            )
+        }
+
+        val mimeType = context.contentResolver.getType(item.uri) ?: when (item.mediaType) {
+            MediaType.PHOTO -> "image/jpeg"
+            MediaType.VIDEO -> "video/mp4"
+            MediaType.AUDIO -> "audio/mp4"
+        }
+
+        val source: MediaSource
+        val finalUri: String
+        var relativePath: String? = null
+        var displayName: String? = null
+        var size: Long = 0
+        var dateTaken: Long? = null
+        var width: Int? = null
+        var height: Int? = null
+        var durationMs: Long? = null
+
+        when {
+            item.isFromCamera -> {
+                source = MediaSource.APP_OWNED
+                val metadata = mediaStoreManager.insertMedia(item.uri, item.mediaType, mimeType)
+                    ?: return@withContext null
+                finalUri = metadata.uri.toString()
+                relativePath = metadata.relativePath
+                displayName = metadata.displayName
+                size = metadata.size
+                dateTaken = metadata.dateTaken
+                width = metadata.width
+                height = metadata.height
+                durationMs = metadata.durationMs
+            }
+            item.importChoice == ImportChoice.SAVE_TO_MEMLY -> {
+                source = MediaSource.IMPORTED
+                val metadata = mediaStoreManager.insertMedia(item.uri, item.mediaType, mimeType)
+                    ?: return@withContext null
+                finalUri = metadata.uri.toString()
+                relativePath = metadata.relativePath
+                displayName = metadata.displayName
+                size = metadata.size
+                dateTaken = metadata.dateTaken
+                width = metadata.width
+                height = metadata.height
+            }
+            else -> {
+                source = MediaSource.EXTERNAL
+                val (resolvedUri, wasResolved) = mediaStoreManager.resolveToMediaStoreUri(item.uri)
+                if (!wasResolved) {
+                    mediaStoreManager.takePersistablePermission(item.uri)
+                }
+                finalUri = resolvedUri.toString()
+                val metadata = mediaStoreManager.queryMetadata(resolvedUri, item.mediaType)
+                if (metadata != null) {
+                    displayName = metadata.displayName
+                    size = metadata.size
+                    dateTaken = metadata.dateTaken
+                    width = metadata.width
+                    height = metadata.height
+                }
+            }
+        }
+
+        val thumbnailFile = ThumbnailUtil.generateThumbnail(
+            context = context,
+            sourceUri = Uri.parse(finalUri),
+            mediaType = item.mediaType,
+            outputDir = thumbDir,
+            fileName = java.util.UUID.randomUUID().toString()
+        )
+
+        MediaFileEntity(
+            memoryId = memoryId,
+            mediaStoreUri = finalUri,
+            thumbnailPath = thumbnailFile?.absolutePath,
+            fileHash = hash,
+            mediaType = item.mediaType,
+            source = source,
+            relativePath = relativePath,
+            displayName = displayName,
+            mimeType = mimeType,
+            size = size,
+            dateTaken = dateTaken,
+            width = width,
+            height = height,
+            durationMs = durationMs
+        )
+    }
+
     fun saveEdits() {
         val state = _uiState.value
         val memory = state.memory ?: return
@@ -209,17 +398,36 @@ class MemoryDetailViewModel @Inject constructor(
                     }
                 }
 
-                // Reload to get fresh data
-                val details = memoryRepository.getMemoryWithDetails(memory.id)
-                if (details != null) {
-                    _uiState.update {
-                        it.copy(
-                            memory = details.memory,
-                            tags = details.tags,
-                            isEditing = false,
-                            isSaving = false
-                        )
+                // Remove marked media files
+                for (mediaId in state.editRemovedMediaIds) {
+                    val mediaFile = state.mediaFiles.find { it.id == mediaId }
+                    if (mediaFile != null) {
+                        memoryRepository.removeMediaFile(mediaFile)
                     }
+                }
+
+                // Add new media files
+                if (state.editNewMediaItems.isNotEmpty()) {
+                    val thumbDir = File(appContext.cacheDir, "thumbnails")
+                    withContext(Dispatchers.IO) {
+                        for (item in state.editNewMediaItems) {
+                            val entity = processMediaItem(item, thumbDir)
+                            if (entity != null) {
+                                memoryRepository.addMediaFile(entity)
+                            }
+                        }
+                    }
+                }
+
+                // Reload to get fresh data
+                loadMemory()
+                _uiState.update {
+                    it.copy(
+                        isEditing = false,
+                        isSaving = false,
+                        editRemovedMediaIds = emptySet(),
+                        editNewMediaItems = emptyList()
+                    )
                 }
             } catch (e: Exception) {
                 _uiState.update {

@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -79,7 +80,19 @@ import com.example.memly.data.local.entity.Mood
 import com.example.memly.data.local.entity.TagEntity
 import com.example.memly.ui.components.AudioPlaybackBar
 import com.example.memly.ui.theme.color
+import android.Manifest
 import android.net.Uri
+import android.os.Build
+import android.widget.Toast
+import androidx.core.content.ContextCompat
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.platform.LocalContext
+import com.example.memly.ui.capture.MediaItem
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -91,9 +104,63 @@ fun MemoryDetailScreen(
     viewModel: MemoryDetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val dateFormat = remember { SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault()) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // Photo picker for edit mode
+    val editPhotoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia()
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            val items = uris.map { uri ->
+                val mimeType = context.contentResolver.getType(uri) ?: ""
+                val type = if (mimeType.startsWith("video")) MediaType.VIDEO else MediaType.PHOTO
+                uri to type
+            }
+            viewModel.addPickedMedia(items)
+        }
+    }
+
+    // Camera for edit mode
+    var editCameraPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    val editCameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && editCameraPhotoUri != null) {
+            viewModel.addCameraMedia(editCameraPhotoUri!!)
+        }
+    }
+
+    val editCameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            val cacheDir = File(context.cacheDir, "camera")
+            if (!cacheDir.exists()) cacheDir.mkdirs()
+            val file = File(cacheDir, "photo_${System.currentTimeMillis()}.jpg")
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                context, "${context.packageName}.fileprovider", file
+            )
+            editCameraPhotoUri = uri
+            editCameraLauncher.launch(uri)
+        } else {
+            Toast.makeText(context, "Camera permission is required", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Media read permission for "Keep Original"
+    val editMediaReadPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            viewModel.onImportChoiceMade(saveToMemly = false)
+        } else {
+            Toast.makeText(context, "Permission needed. Copying instead.", Toast.LENGTH_LONG).show()
+            viewModel.onImportChoiceMade(saveToMemly = true)
+        }
+    }
 
     // Navigate back on delete
     LaunchedEffect(state.isDeleted) {
@@ -199,7 +266,17 @@ fun MemoryDetailScreen(
                             // Edit mode
                             EditModeContent(
                                 state = state,
-                                viewModel = viewModel
+                                viewModel = viewModel,
+                                onPickFromGallery = {
+                                    editPhotoPickerLauncher.launch(
+                                        androidx.activity.result.PickVisualMediaRequest(
+                                            ActivityResultContracts.PickVisualMedia.ImageAndVideo
+                                        )
+                                    )
+                                },
+                                onTakePhoto = {
+                                    editCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                }
                             )
                         } else {
                             // Read mode
@@ -257,6 +334,54 @@ fun MemoryDetailScreen(
             onDismiss = { viewModel.hideCollectionDialog() }
         )
     }
+
+    // Import choice dialog (edit mode)
+    if (state.showImportChoiceDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissImportChoice() },
+            title = { Text("Save photos to Memly?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Choose how to store the selected media:", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Save to Memly: Copies to Memly's folder. Survives even if you delete the original.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "Keep original: References the file in its current location. No extra storage used.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.onImportChoiceMade(saveToMemly = true) }) {
+                    Text("Save to Memly")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        Manifest.permission.READ_MEDIA_IMAGES
+                    } else {
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    }
+                    val hasPermission = ContextCompat.checkSelfPermission(
+                        context, permission
+                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    if (hasPermission) {
+                        viewModel.onImportChoiceMade(saveToMemly = false)
+                    } else {
+                        viewModel.hideImportChoiceDialog()
+                        editMediaReadPermissionLauncher.launch(permission)
+                    }
+                }) {
+                    Text("Keep original")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -273,13 +398,23 @@ private fun AddToCollectionDialog(
             if (collections.isEmpty()) {
                 Text("No collections yet. Create one from the Collections screen.")
             } else {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "Tap to toggle",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     collections.forEach { collection ->
                         val isMember = collection.id in memberCollectionIds
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(10.dp),
                             color = if (isMember) MaterialTheme.colorScheme.primaryContainer
                                     else MaterialTheme.colorScheme.surfaceVariant,
+                            border = androidx.compose.foundation.BorderStroke(
+                                width = if (isMember) 2.dp else 1.dp,
+                                color = if (isMember) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                            ),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { onToggle(collection.id) }
@@ -288,19 +423,27 @@ private fun AddToCollectionDialog(
                                 modifier = Modifier.padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = collection.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = if (isMember) FontWeight.SemiBold else FontWeight.Normal,
-                                    modifier = Modifier.weight(1f)
+                                Checkbox(
+                                    checked = isMember,
+                                    onCheckedChange = { onToggle(collection.id) },
+                                    modifier = Modifier.size(24.dp)
                                 )
-                                if (isMember) {
-                                    Icon(
-                                        Icons.Default.Check,
-                                        contentDescription = "In collection",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
+                                Spacer(Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = collection.name,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = if (isMember) FontWeight.SemiBold else FontWeight.Normal
                                     )
+                                    collection.description?.let { desc ->
+                                        Text(
+                                            text = desc,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -631,8 +774,142 @@ private fun ReadModeContent(
 @Composable
 private fun EditModeContent(
     state: DetailUiState,
-    viewModel: MemoryDetailViewModel
+    viewModel: MemoryDetailViewModel,
+    onPickFromGallery: () -> Unit,
+    onTakePhoto: () -> Unit
 ) {
+    // Media editing section
+    Text("Photos & Videos", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+
+    val existingVisual = state.mediaFiles.filter { it.mediaType != MediaType.AUDIO }
+    val newVisual = state.editNewMediaItems.filter { it.mediaType != MediaType.AUDIO }
+
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // Existing media with remove overlay
+        itemsIndexed(existingVisual) { _, mediaFile ->
+            val isMarkedForRemoval = mediaFile.id in state.editRemovedMediaIds
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(
+                        width = if (isMarkedForRemoval) 2.dp else 1.dp,
+                        color = if (isMarkedForRemoval) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.outline,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+            ) {
+                AsyncImage(
+                    model = Uri.parse(mediaFile.mediaStoreUri),
+                    contentDescription = "Media",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    alpha = if (isMarkedForRemoval) 0.3f else 1f
+                )
+                if (isMarkedForRemoval) {
+                    // Undo removal
+                    Surface(
+                        modifier = Modifier.align(Alignment.Center),
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                    ) {
+                        TextButton(onClick = { viewModel.unmarkMediaForRemoval(mediaFile.id) }) {
+                            Text("Undo", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                } else {
+                    // Remove button
+                    IconButton(
+                        onClick = { viewModel.markMediaForRemoval(mediaFile.id) },
+                        modifier = Modifier.align(Alignment.TopEnd).size(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Remove",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        }
+
+        // New media items
+        itemsIndexed(newVisual) { _, item ->
+            val actualIndex = state.editNewMediaItems.indexOf(item)
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+            ) {
+                AsyncImage(
+                    model = item.uri,
+                    contentDescription = "New media",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                IconButton(
+                    onClick = { viewModel.removeNewMedia(actualIndex) },
+                    modifier = Modifier.align(Alignment.TopEnd).size(24.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Remove",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        }
+
+        // Gallery button
+        item {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+                    .clickable(onClick = onPickFromGallery)
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Add from gallery",
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(4.dp))
+                Text("Gallery", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+
+        // Camera button
+        item {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+                    .clickable(onClick = onTakePhoto)
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Take photo",
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(4.dp))
+                Text("Camera", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+
     // Title
     OutlinedTextField(
         value = state.editTitle,

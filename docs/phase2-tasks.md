@@ -156,6 +156,7 @@ Improve the capture experience with multi-photo selection, reordering, and bette
 | 3.4  | Progress indicator during save (hash computation + thumbnail generation)    | ⬜     | LinearProgressIndicator or dialog with step description        |
 | 3.5  | Validation: require at least one piece of content (media OR notes) before save | ⬜  | Disable save button and show hint when both are empty          |
 | 3.6  | Verify: add multiple photos, reorder, remove, save successfully             | ⬜     | Confirm media order persists and all items appear in detail    |
+| 3.7  | Map-based place picker with search for location selection                   | ⬜     | Replace or augment "Get Location" chip with a map picker. User can search for a place (autocomplete) or tap on map to select. Uses Google Maps SDK + Places API. Returns lat/lng + place name. |
 
 **Checkpoint:** Users can select multiple photos/videos, reorder them, remove unwanted items, and see progress feedback during save. Validation prevents empty memories.
 

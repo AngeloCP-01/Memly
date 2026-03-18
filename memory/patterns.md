@@ -64,7 +64,7 @@
 - Repository's `createMemoryWithDetails()` wraps inserts in `database.withTransaction {}`
 - Camera capture uses `TakePicture` contract + `FileProvider` (not CameraX)
 - Gallery uses `PickMultipleVisualMedia` contract
-- Location uses `FusedLocationProviderClient.getCurrentLocation()` with cancellation token
+- Location uses `FusedLocationProviderClient`: tries `lastLocation` first, falls back to `getCurrentLocation(BALANCED_POWER_ACCURACY)`
 - Duplicate media detected by SHA-256 hash before insert
 
 ## File Management (MediaStore-Based — Implemented)
@@ -125,6 +125,8 @@
 - `MemoryDetailViewModel` loads via `SavedStateHandle["memoryId"]`
 - `DetailUiState` contains both read and edit fields (edit prefixed with `edit*`)
 - Edit mode: `startEditing()` copies current values to edit fields; `cancelEditing()` discards
+- Media editing: `editRemovedMediaIds` tracks existing media to remove; `editNewMediaItems` tracks new media to add. Both processed on `saveEdits()`
+- `processMediaItem()` logic duplicated from CaptureViewModel into MemoryDetailViewModel (same hash/dedup/import flow)
 - Tag changes computed as diff: remove old tags not in new set, add new tags not in old set
 - Delete uses Room FK cascade (no manual cleanup of media/tags needed)
 - Photo hero uses `HorizontalPager` with page indicator dots
@@ -164,8 +166,9 @@
 - Collection cards use `RoundedCornerShape(20.dp)`, `surfaceContainerHigh` color, icon in `primaryContainer` circle
 - `CollectionListViewModel` uses `flatMapLatest` + `combine` to merge collection list with per-collection memory counts
 - `CollectionDetailViewModel` loads via `SavedStateHandle["collectionId"]`
-- Add-to-collection flow lives on `MemoryDetailScreen` — toggle dialog with checkmarks
+- Add-to-collection flow available from both `MemoryDetailScreen` (toggle dialog) and `CollectionDetailScreen` (FAB + bulk toggle dialog)
 - `MemoryDetailViewModel` injects both `MemoryRepository` and `CollectionRepository`
+- `CollectionDetailViewModel` injects both `CollectionRepository` and `MemoryRepository` (for add-memory dialog)
 - Collection membership loaded via `getCollectionIdsForMemory()` on dialog open (not continuously observed)
 - FK CASCADE on `MemoryCollectionCrossRef` handles cleanup when collection or memory is deleted
 

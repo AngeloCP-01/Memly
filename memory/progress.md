@@ -37,8 +37,9 @@
 | 5 | FAB Bottom Nav Redesign         | COMPLETE    |
 | 6 | Fix: Image loading for Keep Original & dedup | COMPLETE |
 | 7 | Fix: TopAppBar double padding, collection dialog bug, rounded nav bar | COMPLETE |
+| 8 | Fix: Edit media, collection UX, location fallback, add-to-collection from detail | COMPLETE |
 
 ## Current Pointer
 
-- **Last completed:** Ad-hoc #7 -- Fix TopAppBar double padding, collection dialog auto-show bug, rounded bottom nav bar (2026-03-18)
+- **Last completed:** Ad-hoc #8 -- Edit media in detail, collection dialog UX, location fallback, add memory from collection detail, map place picker task (2026-03-18)
 - **Next:** Phase 2, Section 2 -- Video Playback

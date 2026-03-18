@@ -642,14 +642,41 @@ private fun MediaActionButton(
 @Suppress("MissingPermission")
 private fun fetchLocation(context: android.content.Context, viewModel: CaptureViewModel) {
     val client = LocationServices.getFusedLocationProviderClient(context)
+
+    // Try last known location first (fast, works indoors)
+    client.lastLocation
+        .addOnSuccessListener { lastLocation ->
+            if (lastLocation != null) {
+                viewModel.updateLocation(lastLocation.latitude, lastLocation.longitude)
+            } else {
+                // No cached location — request a fresh one with balanced priority
+                requestFreshLocation(client, context, viewModel)
+            }
+        }
+        .addOnFailureListener {
+            // lastLocation failed — try fresh request anyway
+            requestFreshLocation(client, context, viewModel)
+        }
+}
+
+@Suppress("MissingPermission")
+private fun requestFreshLocation(
+    client: com.google.android.gms.location.FusedLocationProviderClient,
+    context: android.content.Context,
+    viewModel: CaptureViewModel
+) {
     val cancellation = CancellationTokenSource()
-    client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cancellation.token)
+    client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cancellation.token)
         .addOnSuccessListener { location ->
             if (location != null) {
                 viewModel.updateLocation(location.latitude, location.longitude)
             } else {
                 viewModel.setLocationLoading(false)
-                Toast.makeText(context, "Could not get location", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    "Could not get location. Make sure Location is enabled in Settings.",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
         .addOnFailureListener {

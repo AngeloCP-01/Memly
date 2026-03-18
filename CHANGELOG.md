@@ -4,6 +4,22 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Ad-hoc: Edit Media, Collection UX, Location Fallback
+**Date:** 2026-03-18
+
+### Added
+- **Edit media in detail screen**: Edit mode now supports adding new photos/videos (gallery or camera) and removing existing media. Import choice dialog (Save to Memly / Keep Original) available during edit.
+- **Add memories from collection detail**: FAB on CollectionDetailScreen opens dialog to toggle memories in/out of the collection. No longer need to go to each memory's detail screen individually.
+- **Map place picker task**: Added task 3.7 to Phase 2 Section 3 for future map-based place picker with search.
+
+### Changed
+- **Collection dialog UX**: AddToCollectionDialog now shows checkboxes, border highlights, "Tap to toggle" hint, and collection descriptions for better discoverability.
+
+### Fixed
+- **Location fetching on real devices**: Now tries `lastLocation` first (fast, works indoors) before falling back to `getCurrentLocation` with `BALANCED_POWER_ACCURACY`. Better error message when location unavailable.
+
+---
+
 ## Ad-hoc: UI Fixes & Bottom Nav Rounding
 **Date:** 2026-03-18
 
