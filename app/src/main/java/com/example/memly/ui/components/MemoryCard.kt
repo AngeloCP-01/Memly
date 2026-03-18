@@ -45,10 +45,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.net.Uri
+import androidx.compose.material.icons.filled.BrokenImage
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
 import com.example.memly.data.local.entity.MediaType
 import com.example.memly.data.local.entity.MemoryWithDetails
 import com.example.memly.ui.theme.color
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -77,6 +83,23 @@ fun MemoryCard(
         label = "cardScale"
     )
 
+    val context = LocalContext.current
+
+    // Check if the URI is actually readable (catches dead picker URIs, deleted files, etc.)
+    var isUriReadable by remember(fullResUri) { mutableStateOf(true) } // optimistic default
+    LaunchedEffect(fullResUri) {
+        if (fullResUri != null) {
+            isUriReadable = withContext(Dispatchers.IO) {
+                try {
+                    context.contentResolver.openInputStream(Uri.parse(fullResUri))
+                        ?.use { true } ?: false
+                } catch (_: Exception) {
+                    false
+                }
+            }
+        }
+    }
+
     Column(modifier = modifier) {
         if (fullResUri != null) {
             // Image-dominant card
@@ -97,12 +120,37 @@ fun MemoryCard(
                         )
                     }
             ) {
-                AsyncImage(
-                    model = Uri.parse(fullResUri),
-                    contentDescription = memory.title ?: "Memory",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                if (isUriReadable) {
+                    AsyncImage(
+                        model = Uri.parse(fullResUri),
+                        contentDescription = memory.title ?: "Memory",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    // Broken / inaccessible image
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.BrokenImage,
+                                contentDescription = null,
+                                modifier = Modifier.size(32.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Image unavailable",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
 
                 // Gradient overlay — bottom third
                 Box(

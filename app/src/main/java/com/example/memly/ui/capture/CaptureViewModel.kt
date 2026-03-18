@@ -2,6 +2,7 @@ package com.example.memly.ui.capture
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.memly.data.local.entity.MediaFileEntity
@@ -62,6 +63,9 @@ class CaptureViewModel @Inject constructor(
     private val memoryRepository: MemoryRepository,
     private val mediaStoreManager: MediaStoreManager
 ) : ViewModel() {
+    companion object {
+        private const val TAG = "MemlyCapture"
+    }
 
     private val _uiState = MutableStateFlow(CaptureUiState())
     val uiState: StateFlow<CaptureUiState> = _uiState.asStateFlow()
@@ -167,6 +171,12 @@ class CaptureViewModel @Inject constructor(
         }
     }
 
+    fun hideImportChoiceDialog() {
+        _uiState.update {
+            it.copy(showImportChoiceDialog = false)
+        }
+    }
+
     fun removeMedia(index: Int) {
         _uiState.update {
             it.copy(mediaItems = it.mediaItems.toMutableList().apply { removeAt(index) })
@@ -263,20 +273,51 @@ class CaptureViewModel @Inject constructor(
     ): MediaFileEntity? = withContext(Dispatchers.IO) {
         val context = appContext
 
+        Log.d(TAG, "━━━ processMediaItem START ━━━")
+        Log.d(TAG, "  originalUri=${item.uri}")
+        Log.d(TAG, "  mediaType=${item.mediaType}")
+        Log.d(TAG, "  isFromCamera=${item.isFromCamera}")
+        Log.d(TAG, "  importChoice=${item.importChoice}")
+
         // Compute hash for dedup
         val hash = context.contentResolver.openInputStream(item.uri)?.use { inputStream ->
             FileHashUtil.computeSha256(inputStream)
-        } ?: return@withContext null
+        } ?: run {
+            Log.e(TAG, "  FAILED: could not open input stream for hash")
+            return@withContext null
+        }
 
-        // Check for duplicate
+        // Check for duplicate — if the same file already exists in another memory,
+        // reuse its stored URI/metadata instead of copying again.
+        // This avoids duplicate files on disk while allowing the same photo in multiple memories.
         val existing = memoryRepository.findMediaByHash(hash)
-        if (existing != null) return@withContext null
+        if (existing != null) {
+            Log.d(TAG, "  REUSE: duplicate hash=$hash, existingId=${existing.id}, source=${existing.source}")
+            // Reuse the existing file reference — no new copy needed
+            return@withContext MediaFileEntity(
+                memoryId = 0,
+                mediaStoreUri = existing.mediaStoreUri,
+                thumbnailPath = existing.thumbnailPath,
+                fileHash = hash,
+                mediaType = existing.mediaType,
+                source = existing.source,
+                relativePath = existing.relativePath,
+                displayName = existing.displayName,
+                mimeType = existing.mimeType,
+                size = existing.size,
+                dateTaken = existing.dateTaken,
+                width = existing.width,
+                height = existing.height,
+                durationMs = existing.durationMs
+            )
+        }
 
         val mimeType = context.contentResolver.getType(item.uri) ?: when (item.mediaType) {
             MediaType.PHOTO -> "image/jpeg"
             MediaType.VIDEO -> "video/mp4"
             MediaType.AUDIO -> "audio/mp4"
         }
+        Log.d(TAG, "  mimeType=$mimeType")
 
         val source: MediaSource
         val finalUri: String
@@ -302,12 +343,16 @@ class CaptureViewModel @Inject constructor(
                 width = metadata.width
                 height = metadata.height
                 durationMs = metadata.durationMs
+                Log.d(TAG, "  APP_OWNED → finalUri=$finalUri")
             }
             // Picked → user chose "Save to Memly" (IMPORTED)
             item.importChoice == ImportChoice.SAVE_TO_MEMLY -> {
                 source = MediaSource.IMPORTED
                 val metadata = mediaStoreManager.insertMedia(item.uri, item.mediaType, mimeType)
-                    ?: return@withContext null
+                    ?: run {
+                        Log.e(TAG, "  FAILED: insertMedia returned null for IMPORTED")
+                        return@withContext null
+                    }
                 finalUri = metadata.uri.toString()
                 relativePath = metadata.relativePath
                 displayName = metadata.displayName
@@ -315,19 +360,24 @@ class CaptureViewModel @Inject constructor(
                 dateTaken = metadata.dateTaken
                 width = metadata.width
                 height = metadata.height
+                Log.d(TAG, "  IMPORTED → finalUri=$finalUri")
             }
             // Picked → "Keep in original location" (EXTERNAL)
             else -> {
                 source = MediaSource.EXTERNAL
-                // Resolve to stable URI
+                Log.d(TAG, "  EXTERNAL path — resolving picker URI...")
+                // Resolve to stable MediaStore URI (requires READ_MEDIA_IMAGES permission)
                 val (resolvedUri, wasResolved) = mediaStoreManager.resolveToMediaStoreUri(item.uri)
+                Log.d(TAG, "  resolvedUri=$resolvedUri, wasResolved=$wasResolved")
                 if (!wasResolved) {
-                    mediaStoreManager.takePersistablePermission(item.uri)
+                    val permResult = mediaStoreManager.takePersistablePermission(item.uri)
+                    Log.d(TAG, "  takePersistablePermission=$permResult")
                 }
                 finalUri = resolvedUri.toString()
 
                 // Query metadata from the source
                 val metadata = mediaStoreManager.queryMetadata(resolvedUri, item.mediaType)
+                Log.d(TAG, "  metadata=${metadata != null}, displayName=${metadata?.displayName}, size=${metadata?.size}")
                 if (metadata != null) {
                     displayName = metadata.displayName
                     size = metadata.size
@@ -338,6 +388,23 @@ class CaptureViewModel @Inject constructor(
             }
         }
 
+        // Verify the final URI is actually readable
+        Log.d(TAG, "  ── READABILITY CHECK ──")
+        Log.d(TAG, "  finalUri=$finalUri, source=$source")
+        try {
+            val testUri = Uri.parse(finalUri)
+            context.contentResolver.openInputStream(testUri)?.use { stream ->
+                val available = stream.available()
+                Log.d(TAG, "  ✓ URI readable, available=$available bytes")
+            } ?: Log.e(TAG, "  ✗ openInputStream returned null for $finalUri")
+        } catch (e: SecurityException) {
+            Log.e(TAG, "  ✗ SecurityException reading $finalUri", e)
+        } catch (e: java.io.FileNotFoundException) {
+            Log.e(TAG, "  ✗ FileNotFoundException reading $finalUri", e)
+        } catch (e: Exception) {
+            Log.e(TAG, "  ✗ Exception reading $finalUri", e)
+        }
+
         // Generate thumbnail
         val thumbnailFile = ThumbnailUtil.generateThumbnail(
             context = context,
@@ -346,6 +413,8 @@ class CaptureViewModel @Inject constructor(
             outputDir = thumbDir,
             fileName = java.util.UUID.randomUUID().toString()
         )
+        Log.d(TAG, "  thumbnail=${thumbnailFile?.absolutePath}")
+        Log.d(TAG, "━━━ processMediaItem END ━━━")
 
         MediaFileEntity(
             memoryId = 0, // Will be set by repository in transaction

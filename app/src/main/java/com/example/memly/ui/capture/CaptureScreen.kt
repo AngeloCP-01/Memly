@@ -1,8 +1,11 @@
 package com.example.memly.ui.capture
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
@@ -180,6 +183,18 @@ fun CaptureScreen(
             viewModel.startRecording()
         } else {
             Toast.makeText(context, "Microphone permission is required to record", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Media read permission (needed for "Keep Original" to resolve stable MediaStore URIs)
+    val mediaReadPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            viewModel.onImportChoiceMade(saveToMemly = false)
+        } else {
+            Toast.makeText(context, "Permission needed to reference original files. Copying instead.", Toast.LENGTH_LONG).show()
+            viewModel.onImportChoiceMade(saveToMemly = true)
         }
     }
 
@@ -569,7 +584,25 @@ fun CaptureScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.onImportChoiceMade(saveToMemly = false) }) {
+                TextButton(onClick = {
+                    // Need READ_MEDIA_IMAGES (API 33+) or READ_EXTERNAL_STORAGE to resolve
+                    // picker URIs to stable MediaStore URIs for "Keep Original"
+                    val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        Manifest.permission.READ_MEDIA_IMAGES
+                    } else {
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    }
+                    val hasPermission = ContextCompat.checkSelfPermission(
+                        context, permission
+                    ) == PackageManager.PERMISSION_GRANTED
+                    if (hasPermission) {
+                        viewModel.onImportChoiceMade(saveToMemly = false)
+                    } else {
+                        // Hide dialog but keep pending URIs for the permission callback
+                        viewModel.hideImportChoiceDialog()
+                        mediaReadPermissionLauncher.launch(permission)
+                    }
+                }) {
                     Text("Keep original")
                 }
             }

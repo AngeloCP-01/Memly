@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import com.example.memly.data.local.entity.CollectionEntity
 import com.example.memly.data.local.entity.MediaFileEntity
 import com.example.memly.data.local.entity.MediaSource
@@ -53,10 +54,14 @@ data class DetailUiState(
 @HiltViewModel
 class MemoryDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
+    @ApplicationContext private val appContext: Context,
     private val memoryRepository: MemoryRepository,
     private val collectionRepository: CollectionRepository,
     private val mediaStoreManager: MediaStoreManager
 ) : ViewModel() {
+    companion object {
+        private const val TAG = "MemlyDetail"
+    }
 
     private val memoryId: Long = savedStateHandle["memoryId"] ?: -1L
 
@@ -73,14 +78,37 @@ class MemoryDetailViewModel @Inject constructor(
             try {
                 val details = memoryRepository.getMemoryWithDetails(memoryId)
                 if (details != null) {
-                    // Check for broken external references (IO-bound)
+                    Log.d(TAG, "━━━ loadMemory id=$memoryId ━━━")
+                    Log.d(TAG, "  mediaFiles count=${details.mediaFiles.size}")
+                    for (mf in details.mediaFiles) {
+                        Log.d(TAG, "  ── media id=${mf.id} ──")
+                        Log.d(TAG, "    source=${mf.source}")
+                        Log.d(TAG, "    mediaStoreUri=${mf.mediaStoreUri}")
+                        Log.d(TAG, "    mimeType=${mf.mimeType}")
+                        Log.d(TAG, "    thumbnailPath=${mf.thumbnailPath}")
+                        // Readability test
+                        try {
+                            val uri = Uri.parse(mf.mediaStoreUri)
+                            appContext.contentResolver.openInputStream(uri)?.use { stream ->
+                                Log.d(TAG, "    ✓ readable, available=${stream.available()}")
+                            } ?: Log.e(TAG, "    ✗ openInputStream returned null")
+                        } catch (e: SecurityException) {
+                            Log.e(TAG, "    ✗ SecurityException: ${e.message}")
+                        } catch (e: java.io.FileNotFoundException) {
+                            Log.e(TAG, "    ✗ FileNotFoundException: ${e.message}")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "    ✗ Exception: ${e.message}")
+                        }
+                    }
+
+                    // Check ALL media files for broken/inaccessible URIs (IO-bound)
                     val brokenIds = withContext(Dispatchers.IO) {
                         details.mediaFiles
-                            .filter { it.source == MediaSource.EXTERNAL }
                             .filter { !mediaStoreManager.isUriAccessible(Uri.parse(it.mediaStoreUri)) }
                             .map { it.id }
                             .toSet()
                     }
+                    Log.d(TAG, "  brokenIds=$brokenIds")
 
                     _uiState.update {
                         it.copy(

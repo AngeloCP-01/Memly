@@ -104,19 +104,61 @@ class MediaStoreManager(
      * The caller should take persistable URI permission on the fallback URI.
      */
     fun resolveToMediaStoreUri(pickerUri: Uri): Pair<Uri, Boolean> {
-        // Try to query the MediaStore for this URI
+        val mimeType = context.contentResolver.getType(pickerUri) ?: ""
+        val baseUri = when {
+            mimeType.startsWith("video") -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            mimeType.startsWith("audio") -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+            else -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        }
+
+        // Strategy 1: Query picker URI for display name + size, then find in MediaStore
+        try {
+            var displayName: String? = null
+            var fileSize: Long = 0
+            val metaProjection = arrayOf(
+                MediaStore.MediaColumns.DISPLAY_NAME,
+                MediaStore.MediaColumns.SIZE
+            )
+            context.contentResolver.query(pickerUri, metaProjection, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    displayName = cursor.getString(0)
+                    fileSize = cursor.getLong(1)
+                }
+            }
+
+            if (!displayName.isNullOrBlank()) {
+                // Search external MediaStore for a file with matching name and size
+                val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ?" +
+                        if (fileSize > 0) " AND ${MediaStore.MediaColumns.SIZE} = ?" else ""
+                val args = if (fileSize > 0) {
+                    arrayOf(displayName!!, fileSize.toString())
+                } else {
+                    arrayOf(displayName!!)
+                }
+                context.contentResolver.query(
+                    baseUri,
+                    arrayOf(MediaStore.MediaColumns._ID),
+                    selection,
+                    args,
+                    null
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val id = cursor.getLong(0)
+                        val resolved = ContentUris.withAppendedId(baseUri, id)
+                        return resolved to true
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "Strategy 1 (name+size match) failed", e)
+        }
+
+        // Strategy 2: Direct ID extraction (works on some devices/API levels)
         try {
             val projection = arrayOf(MediaStore.MediaColumns._ID)
             context.contentResolver.query(pickerUri, projection, null, null, null)?.use { cursor ->
                 if (cursor.moveToFirst()) {
                     val id = cursor.getLong(0)
-                    // Determine the correct external content URI base
-                    val mimeType = context.contentResolver.getType(pickerUri) ?: ""
-                    val baseUri = when {
-                        mimeType.startsWith("video") -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-                        mimeType.startsWith("audio") -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-                        else -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-                    }
                     val resolved = ContentUris.withAppendedId(baseUri, id)
                     // Verify the resolved URI is accessible
                     context.contentResolver.query(resolved, arrayOf(MediaStore.MediaColumns._ID), null, null, null)?.use {
@@ -127,8 +169,9 @@ class MediaStoreManager(
                 }
             }
         } catch (e: Exception) {
-            Log.d(TAG, "Could not resolve to MediaStore URI, will use persistable permission", e)
+            Log.d(TAG, "Strategy 2 (direct ID) failed", e)
         }
+
         return pickerUri to false
     }
 
@@ -215,13 +258,12 @@ class MediaStoreManager(
     }
 
     /**
-     * Check if a content URI is still accessible.
+     * Check if a content URI is still accessible by actually opening a stream.
+     * query() alone can return true for URIs that are no longer readable.
      */
     fun isUriAccessible(uri: Uri): Boolean {
         return try {
-            context.contentResolver.query(
-                uri, arrayOf(MediaStore.MediaColumns._ID), null, null, null
-            )?.use { it.moveToFirst() } ?: false
+            context.contentResolver.openInputStream(uri)?.use { true } ?: false
         } catch (e: Exception) {
             false
         }
