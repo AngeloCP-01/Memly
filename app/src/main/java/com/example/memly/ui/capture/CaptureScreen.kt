@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -113,13 +114,12 @@ fun CaptureScreen(
         contract = ActivityResultContracts.PickMultipleVisualMedia()
     ) { uris ->
         if (uris.isNotEmpty()) {
-            // Determine type per URI; default to PHOTO
             val items = uris.map { uri ->
                 val mimeType = context.contentResolver.getType(uri) ?: ""
                 val type = if (mimeType.startsWith("video")) MediaType.VIDEO else MediaType.PHOTO
-                type to uri
+                uri to type
             }
-            items.forEach { (type, uri) -> viewModel.addMedia(uri, type) }
+            viewModel.addPickedMedia(items)
         }
     }
 
@@ -129,7 +129,7 @@ fun CaptureScreen(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
         if (success && cameraPhotoUri != null) {
-            viewModel.addMedia(cameraPhotoUri!!, MediaType.PHOTO)
+            viewModel.addCameraMedia(cameraPhotoUri!!)
         }
     }
 
@@ -189,7 +189,7 @@ fun CaptureScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // === MEDIA SECTION (Tasks 2.3, 2.4) ===
+                // === MEDIA SECTION ===
                 Text("Photos & Videos", style = MaterialTheme.typography.titleMedium)
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -245,7 +245,7 @@ fun CaptureScreen(
                     }
                 }
 
-                // === TEXT INPUT (Task 2.5) ===
+                // === TEXT INPUT ===
                 Text("Details", style = MaterialTheme.typography.titleMedium)
                 OutlinedTextField(
                     value = state.title,
@@ -270,7 +270,7 @@ fun CaptureScreen(
                     supportingText = { Text("${state.notes.length}/1000") }
                 )
 
-                // === MOOD SELECTOR (Task 2.6) ===
+                // === MOOD SELECTOR ===
                 Text("How are you feeling?", style = MaterialTheme.typography.titleMedium)
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -289,7 +289,7 @@ fun CaptureScreen(
                     }
                 }
 
-                // === LOCATION (Tasks 2.7, 2.8) ===
+                // === LOCATION ===
                 Text("Location", style = MaterialTheme.typography.titleMedium)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -339,7 +339,7 @@ fun CaptureScreen(
                     )
                 )
 
-                // === TAGS (Task 2.9) ===
+                // === TAGS ===
                 Text("Tags", style = MaterialTheme.typography.titleMedium)
                 if (state.tags.isNotEmpty()) {
                     FlowRow(
@@ -374,7 +374,7 @@ fun CaptureScreen(
                     }
                 )
 
-                // === DATE PICKER (Task 2.10) ===
+                // === DATE PICKER ===
                 Text("Date", style = MaterialTheme.typography.titleMedium)
                 AssistChip(
                     onClick = { showDatePicker = true },
@@ -430,6 +430,42 @@ fun CaptureScreen(
         ) {
             DatePicker(state = datePickerState)
         }
+    }
+
+    // Import choice dialog
+    if (state.showImportChoiceDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissImportChoice() },
+            title = { Text("Save photos to Memly?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Choose how to store the selected media:",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        "Save to Memly: Copies to Memly's folder. Survives even if you delete the original.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "Keep original: References the file in its current location. No extra storage used, but the photo may disappear from Memly if you delete the original.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.onImportChoiceMade(saveToMemly = true) }) {
+                    Text("Save to Memly")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onImportChoiceMade(saveToMemly = false) }) {
+                    Text("Keep original")
+                }
+            }
+        )
     }
 }
 

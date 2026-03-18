@@ -3,20 +3,27 @@ package com.example.memly.ui.detail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
+import android.net.Uri
 import com.example.memly.data.local.entity.CollectionEntity
 import com.example.memly.data.local.entity.MediaFileEntity
+import com.example.memly.data.local.entity.MediaSource
 import com.example.memly.data.local.entity.MemoryEntity
 import com.example.memly.data.local.entity.Mood
 import com.example.memly.data.local.entity.TagEntity
 import com.example.memly.data.repository.CollectionRepository
 import com.example.memly.data.repository.MemoryRepository
+import com.example.memly.util.MediaStoreManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class DetailUiState(
@@ -38,14 +45,17 @@ data class DetailUiState(
     // Collections
     val showCollectionDialog: Boolean = false,
     val allCollections: List<CollectionEntity> = emptyList(),
-    val memberCollectionIds: Set<Long> = emptySet()
+    val memberCollectionIds: Set<Long> = emptySet(),
+    // Broken references
+    val brokenMediaIds: Set<Long> = emptySet()
 )
 
 @HiltViewModel
 class MemoryDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val memoryRepository: MemoryRepository,
-    private val collectionRepository: CollectionRepository
+    private val collectionRepository: CollectionRepository,
+    private val mediaStoreManager: MediaStoreManager
 ) : ViewModel() {
 
     private val memoryId: Long = savedStateHandle["memoryId"] ?: -1L
@@ -63,12 +73,22 @@ class MemoryDetailViewModel @Inject constructor(
             try {
                 val details = memoryRepository.getMemoryWithDetails(memoryId)
                 if (details != null) {
+                    // Check for broken external references (IO-bound)
+                    val brokenIds = withContext(Dispatchers.IO) {
+                        details.mediaFiles
+                            .filter { it.source == MediaSource.EXTERNAL }
+                            .filter { !mediaStoreManager.isUriAccessible(Uri.parse(it.mediaStoreUri)) }
+                            .map { it.id }
+                            .toSet()
+                    }
+
                     _uiState.update {
                         it.copy(
                             memory = details.memory,
                             mediaFiles = details.mediaFiles,
                             tags = details.tags,
-                            isLoading = false
+                            isLoading = false,
+                            brokenMediaIds = brokenIds
                         )
                     }
                 } else {
@@ -181,11 +201,52 @@ class MemoryDetailViewModel @Inject constructor(
         }
     }
 
-    fun deleteMemory() {
-        val memory = _uiState.value.memory ?: return
+    fun importToMemly(mediaFile: MediaFileEntity) {
+        if (mediaFile.source != MediaSource.EXTERNAL) return
         viewModelScope.launch {
             try {
-                memoryRepository.deleteMemory(memory)
+                val sourceUri = Uri.parse(mediaFile.mediaStoreUri)
+                val mimeType = mediaFile.mimeType ?: "image/jpeg"
+                val metadata = mediaStoreManager.insertMedia(sourceUri, mediaFile.mediaType, mimeType)
+                    ?: throw Exception("Failed to copy file")
+
+                val updated = mediaFile.copy(
+                    mediaStoreUri = metadata.uri.toString(),
+                    source = MediaSource.IMPORTED,
+                    relativePath = metadata.relativePath,
+                    displayName = metadata.displayName,
+                    size = metadata.size,
+                    dateTaken = metadata.dateTaken,
+                    width = metadata.width,
+                    height = metadata.height
+                )
+                memoryRepository.updateMediaFile(updated)
+
+                // Reload
+                loadMemory()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to import: ${e.message}") }
+            }
+        }
+    }
+
+    fun removeBrokenReference(mediaFile: MediaFileEntity) {
+        viewModelScope.launch {
+            try {
+                memoryRepository.removeMediaFile(mediaFile)
+                loadMemory()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to remove: ${e.message}") }
+            }
+        }
+    }
+
+    fun deleteMemory() {
+        val state = _uiState.value
+        val memory = state.memory ?: return
+        viewModelScope.launch {
+            try {
+                memoryRepository.deleteMemoryWithFiles(memory, state.mediaFiles)
                 _uiState.update { it.copy(isDeleted = true) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Failed to delete: ${e.message}") }

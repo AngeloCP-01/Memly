@@ -5,11 +5,13 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.memly.data.local.entity.MediaFileEntity
+import com.example.memly.data.local.entity.MediaSource
 import com.example.memly.data.local.entity.MediaType
 import com.example.memly.data.local.entity.MemoryEntity
 import com.example.memly.data.local.entity.Mood
 import com.example.memly.data.repository.MemoryRepository
 import com.example.memly.util.FileHashUtil
+import com.example.memly.util.MediaStoreManager
 import com.example.memly.util.ThumbnailUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,13 +23,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.util.UUID
 import javax.inject.Inject
+
+enum class ImportChoice { SAVE_TO_MEMLY, KEEP_ORIGINAL }
 
 data class MediaItem(
     val uri: Uri,
     val mediaType: MediaType,
-    val displayName: String = ""
+    val isFromCamera: Boolean = false,
+    val importChoice: ImportChoice? = null
 )
 
 data class CaptureUiState(
@@ -44,13 +48,16 @@ data class CaptureUiState(
     val isLoading: Boolean = false,
     val isSaved: Boolean = false,
     val error: String? = null,
-    val isLocationLoading: Boolean = false
+    val isLocationLoading: Boolean = false,
+    val showImportChoiceDialog: Boolean = false,
+    val pendingPickedUris: List<Pair<Uri, MediaType>> = emptyList()
 )
 
 @HiltViewModel
 class CaptureViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
-    private val memoryRepository: MemoryRepository
+    private val memoryRepository: MemoryRepository,
+    private val mediaStoreManager: MediaStoreManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CaptureUiState())
@@ -68,15 +75,45 @@ class CaptureViewModel @Inject constructor(
         _uiState.update { it.copy(mood = if (it.mood == mood) null else mood) }
     }
 
-    fun addMedia(uris: List<Uri>, mediaType: MediaType) {
-        val newItems = uris.map { uri ->
-            MediaItem(uri = uri, mediaType = mediaType)
-        }
-        _uiState.update { it.copy(mediaItems = it.mediaItems + newItems) }
+    fun addCameraMedia(uri: Uri) {
+        val item = MediaItem(uri = uri, mediaType = MediaType.PHOTO, isFromCamera = true)
+        _uiState.update { it.copy(mediaItems = it.mediaItems + item) }
     }
 
-    fun addMedia(uri: Uri, mediaType: MediaType) {
-        addMedia(listOf(uri), mediaType)
+    fun addPickedMedia(uris: List<Pair<Uri, MediaType>>) {
+        // Show import choice dialog
+        _uiState.update {
+            it.copy(
+                showImportChoiceDialog = true,
+                pendingPickedUris = uris
+            )
+        }
+    }
+
+    fun onImportChoiceMade(saveToMemly: Boolean) {
+        val pending = _uiState.value.pendingPickedUris
+        val choice = if (saveToMemly) ImportChoice.SAVE_TO_MEMLY else ImportChoice.KEEP_ORIGINAL
+        val items = pending.map { (uri, type) ->
+            MediaItem(
+                uri = uri,
+                mediaType = type,
+                isFromCamera = false,
+                importChoice = choice
+            )
+        }
+        _uiState.update {
+            it.copy(
+                mediaItems = it.mediaItems + items,
+                showImportChoiceDialog = false,
+                pendingPickedUris = emptyList()
+            )
+        }
+    }
+
+    fun dismissImportChoice() {
+        _uiState.update {
+            it.copy(showImportChoiceDialog = false, pendingPickedUris = emptyList())
+        }
     }
 
     fun removeMedia(index: Int) {
@@ -136,9 +173,7 @@ class CaptureViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val context = appContext
-                val mediaDir = File(context.filesDir, "media")
-                val thumbDir = File(context.cacheDir, "thumbnails")
+                val thumbDir = File(appContext.cacheDir, "thumbnails")
 
                 val memoryEntity = MemoryEntity(
                     title = state.title.ifBlank { null },
@@ -152,7 +187,7 @@ class CaptureViewModel @Inject constructor(
 
                 val mediaEntities = withContext(Dispatchers.IO) {
                     state.mediaItems.mapNotNull { item ->
-                        processMediaItem(context, item, mediaDir, thumbDir)
+                        processMediaItem(item, thumbDir)
                     }
                 }
 
@@ -172,11 +207,11 @@ class CaptureViewModel @Inject constructor(
     }
 
     private suspend fun processMediaItem(
-        context: Context,
         item: MediaItem,
-        mediaDir: File,
         thumbDir: File
     ): MediaFileEntity? = withContext(Dispatchers.IO) {
+        val context = appContext
+
         // Compute hash for dedup
         val hash = context.contentResolver.openInputStream(item.uri)?.use { inputStream ->
             FileHashUtil.computeSha256(inputStream)
@@ -186,33 +221,92 @@ class CaptureViewModel @Inject constructor(
         val existing = memoryRepository.findMediaByHash(hash)
         if (existing != null) return@withContext null
 
-        // Copy file to app-private storage
-        if (!mediaDir.exists()) mediaDir.mkdirs()
-        val extension = if (item.mediaType == MediaType.PHOTO) "jpg" else "mp4"
-        val fileName = "${UUID.randomUUID()}.$extension"
-        val destFile = File(mediaDir, fileName)
+        val mimeType = context.contentResolver.getType(item.uri) ?: when (item.mediaType) {
+            MediaType.PHOTO -> "image/jpeg"
+            MediaType.VIDEO -> "video/mp4"
+        }
 
-        context.contentResolver.openInputStream(item.uri)?.use { input ->
-            destFile.outputStream().use { output ->
-                input.copyTo(output)
+        val source: MediaSource
+        val finalUri: String
+        var relativePath: String? = null
+        var displayName: String? = null
+        var size: Long = 0
+        var dateTaken: Long? = null
+        var width: Int? = null
+        var height: Int? = null
+
+        when {
+            // Camera photo → save to public storage (APP_OWNED)
+            item.isFromCamera -> {
+                source = MediaSource.APP_OWNED
+                val metadata = mediaStoreManager.insertMedia(item.uri, item.mediaType, mimeType)
+                    ?: return@withContext null
+                finalUri = metadata.uri.toString()
+                relativePath = metadata.relativePath
+                displayName = metadata.displayName
+                size = metadata.size
+                dateTaken = metadata.dateTaken
+                width = metadata.width
+                height = metadata.height
+            }
+            // Picked → user chose "Save to Memly" (IMPORTED)
+            item.importChoice == ImportChoice.SAVE_TO_MEMLY -> {
+                source = MediaSource.IMPORTED
+                val metadata = mediaStoreManager.insertMedia(item.uri, item.mediaType, mimeType)
+                    ?: return@withContext null
+                finalUri = metadata.uri.toString()
+                relativePath = metadata.relativePath
+                displayName = metadata.displayName
+                size = metadata.size
+                dateTaken = metadata.dateTaken
+                width = metadata.width
+                height = metadata.height
+            }
+            // Picked → "Keep in original location" (EXTERNAL)
+            else -> {
+                source = MediaSource.EXTERNAL
+                // Resolve to stable URI
+                val (resolvedUri, wasResolved) = mediaStoreManager.resolveToMediaStoreUri(item.uri)
+                if (!wasResolved) {
+                    mediaStoreManager.takePersistablePermission(item.uri)
+                }
+                finalUri = resolvedUri.toString()
+
+                // Query metadata from the source
+                val metadata = mediaStoreManager.queryMetadata(resolvedUri, item.mediaType)
+                if (metadata != null) {
+                    displayName = metadata.displayName
+                    size = metadata.size
+                    dateTaken = metadata.dateTaken
+                    width = metadata.width
+                    height = metadata.height
+                }
             }
         }
 
         // Generate thumbnail
         val thumbnailFile = ThumbnailUtil.generateThumbnail(
             context = context,
-            sourceUri = Uri.fromFile(destFile),
+            sourceUri = Uri.parse(finalUri),
             mediaType = item.mediaType,
             outputDir = thumbDir,
-            fileName = UUID.randomUUID().toString()
+            fileName = java.util.UUID.randomUUID().toString()
         )
 
         MediaFileEntity(
             memoryId = 0, // Will be set by repository in transaction
-            filePath = destFile.absolutePath,
+            mediaStoreUri = finalUri,
             thumbnailPath = thumbnailFile?.absolutePath,
             fileHash = hash,
-            mediaType = item.mediaType
+            mediaType = item.mediaType,
+            source = source,
+            relativePath = relativePath,
+            displayName = displayName,
+            mimeType = mimeType,
+            size = size,
+            dateTaken = dateTaken,
+            width = width,
+            height = height
         )
     }
 }

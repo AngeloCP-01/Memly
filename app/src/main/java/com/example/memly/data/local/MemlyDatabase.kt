@@ -21,7 +21,7 @@ import com.example.memly.data.local.entity.TagEntity
         MemoryTagCrossRef::class,
         MemoryCollectionCrossRef::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class MemlyDatabase : RoomDatabase() {

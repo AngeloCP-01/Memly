@@ -1,16 +1,20 @@
 package com.example.memly.ui.settings
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.memly.data.local.MemlyDatabase
 import com.example.memly.data.local.dao.MemoryDao
+import com.example.memly.data.local.entity.MediaSource
+import com.example.memly.util.MediaStoreManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -33,7 +37,8 @@ data class SettingsUiState(
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: MemlyDatabase,
-    private val memoryDao: MemoryDao
+    private val memoryDao: MemoryDao,
+    private val mediaStoreManager: MediaStoreManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -49,9 +54,8 @@ class SettingsViewModel @Inject constructor(
                 val stats = withContext(Dispatchers.IO) {
                     val memoryCount = memoryDao.getMemoryCount()
                     val mediaCount = memoryDao.getMediaFileCount()
-                    val mediaDir = File(context.filesDir, "media")
                     val thumbnailDir = File(context.cacheDir, "thumbnails")
-                    val diskUsage = calculateDirSize(mediaDir) + calculateDirSize(thumbnailDir)
+                    val diskUsage = calculateDirSize(thumbnailDir)
                     Triple(memoryCount, mediaCount, diskUsage)
                 }
                 _uiState.update {
@@ -85,8 +89,14 @@ class SettingsViewModel @Inject constructor(
             _uiState.update { it.copy(isClearing = true, showFinalConfirmDialog = false) }
             try {
                 withContext(Dispatchers.IO) {
+                    // Delete owned/imported media files from public storage
+                    val ownedFiles = memoryDao.getMediaFilesBySource(MediaSource.APP_OWNED).first()
+                    val importedFiles = memoryDao.getMediaFilesBySource(MediaSource.IMPORTED).first()
+                    (ownedFiles + importedFiles).forEach { file ->
+                        mediaStoreManager.deleteOwnedMedia(Uri.parse(file.mediaStoreUri))
+                    }
+
                     database.clearAllTables()
-                    File(context.filesDir, "media").deleteRecursively()
                     File(context.cacheDir, "thumbnails").deleteRecursively()
                 }
                 _uiState.update {

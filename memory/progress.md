@@ -17,7 +17,7 @@
 
 | # | Section                        | Status      |
 |---|--------------------------------|-------------|
-| 0 | File Management Refactor       | NOT STARTED |
+| 0 | File Management Refactor       | COMPLETE    |
 | 1 | Voice Memos                    | NOT STARTED |
 | 2 | Video Playback                 | NOT STARTED |
 | 3 | Enhanced Capture               | NOT STARTED |
@@ -37,5 +37,5 @@
 
 ## Current Pointer
 
-- **Last completed:** Navigation & Screen Redesign (2026-03-17) — Bottom nav overhaul (Map + Settings icons), Search screen removed, functional search + filter on Timeline & Collections, Settings/Collections redesigned as top-level nav destinations
-- **Next:** Phase 2, Section 0 -- File Management Refactor (priority prerequisite for all other Phase 2 sections)
+- **Last completed:** Phase 2, Section 0 -- File Management Refactor (2026-03-18) — MediaStore-based public storage, MediaSource enum, import choice dialog, broken reference handling, import-to-memly action
+- **Next:** Phase 2, Section 1 -- Voice Memos

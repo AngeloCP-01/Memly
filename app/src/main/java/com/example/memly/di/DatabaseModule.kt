@@ -6,6 +6,7 @@ import com.example.memly.data.local.MemlyDatabase
 import com.example.memly.data.local.dao.CollectionDao
 import com.example.memly.data.local.dao.MemoryDao
 import com.example.memly.data.local.dao.TagDao
+import com.example.memly.util.MediaStoreManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -19,12 +20,19 @@ object DatabaseModule {
 
     @Provides
     @Singleton
+    fun provideMediaStoreManager(@ApplicationContext context: Context): MediaStoreManager {
+        return MediaStoreManager(context)
+    }
+
+    @Provides
+    @Singleton
     fun provideDatabase(@ApplicationContext context: Context): MemlyDatabase {
         return Room.databaseBuilder(
             context,
             MemlyDatabase::class.java,
             "memly_database"
-        ).build()
+        ).fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
     }
 
     @Provides

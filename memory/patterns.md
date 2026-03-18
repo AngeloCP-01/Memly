@@ -62,7 +62,7 @@
 - Location uses `FusedLocationProviderClient.getCurrentLocation()` with cancellation token
 - Duplicate media detected by SHA-256 hash before insert
 
-## File Management (MediaStore-Based — Planned Refactor, Section 0)
+## File Management (MediaStore-Based — Implemented)
 
 - **In-app content** (camera, audio) → saved to public storage via MediaStore API: `Pictures/Memly/`, `Movies/Memly/`, `Music/Memly/`
 - **Picked content** (gallery) → user chooses: reference only (`EXTERNAL`) or copy to Memly (`IMPORTED`)

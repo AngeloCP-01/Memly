@@ -72,11 +72,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.example.memly.data.local.entity.CollectionEntity
 import com.example.memly.data.local.entity.MediaFileEntity
+import com.example.memly.data.local.entity.MediaSource
 import com.example.memly.data.local.entity.MemoryEntity
 import com.example.memly.data.local.entity.Mood
 import com.example.memly.data.local.entity.TagEntity
 import com.example.memly.ui.theme.color
-import java.io.File
+import android.net.Uri
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -163,7 +164,10 @@ fun MemoryDetailScreen(
                             else onNavigateBack()
                         },
                         onDeleteClick = { showDeleteDialog = true },
-                        isEditing = state.isEditing
+                        isEditing = state.isEditing,
+                        brokenMediaIds = state.brokenMediaIds,
+                        onImportToMemly = { viewModel.importToMemly(it) },
+                        onRemoveBroken = { viewModel.removeBrokenReference(it) }
                     )
 
                     // Metadata section
@@ -183,7 +187,13 @@ fun MemoryDetailScreen(
                                 memory = memory,
                                 tags = state.tags,
                                 dateFormat = dateFormat,
-                                onAddToCollection = { viewModel.showCollectionDialog() }
+                                onAddToCollection = { viewModel.showCollectionDialog() },
+                                hasExternalMedia = state.mediaFiles.any { it.source == MediaSource.EXTERNAL },
+                                onImportAll = {
+                                    state.mediaFiles
+                                        .filter { it.source == MediaSource.EXTERNAL }
+                                        .forEach { viewModel.importToMemly(it) }
+                                }
                             )
                         }
                     }
@@ -292,7 +302,10 @@ private fun PhotoHeroSection(
     mood: Mood?,
     onBackClick: () -> Unit,
     onDeleteClick: () -> Unit,
-    isEditing: Boolean
+    isEditing: Boolean,
+    brokenMediaIds: Set<Long> = emptySet(),
+    onImportToMemly: (MediaFileEntity) -> Unit = {},
+    onRemoveBroken: (MediaFileEntity) -> Unit = {}
 ) {
     if (mediaFiles.isNotEmpty()) {
         val pagerState = rememberPagerState(pageCount = { mediaFiles.size })
@@ -306,13 +319,37 @@ private fun PhotoHeroSection(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
-                val filePath = mediaFiles[page].filePath
-                AsyncImage(
-                    model = File(filePath),
-                    contentDescription = "Media ${page + 1}",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                val mediaFile = mediaFiles[page]
+                val isBroken = mediaFile.id in brokenMediaIds
+
+                if (isBroken) {
+                    // Broken reference placeholder
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Original file removed",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            TextButton(onClick = { onRemoveBroken(mediaFile) }) {
+                                Text("Remove from memory")
+                            }
+                        }
+                    }
+                } else {
+                    AsyncImage(
+                        model = Uri.parse(mediaFile.mediaStoreUri),
+                        contentDescription = "Media ${page + 1}",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
 
             // Back button — top left
@@ -425,7 +462,9 @@ private fun ReadModeContent(
     memory: MemoryEntity,
     tags: List<TagEntity>,
     dateFormat: SimpleDateFormat,
-    onAddToCollection: () -> Unit
+    onAddToCollection: () -> Unit,
+    hasExternalMedia: Boolean = false,
+    onImportAll: () -> Unit = {}
 ) {
     // Title
     Text(
@@ -507,6 +546,35 @@ private fun ReadModeContent(
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                     )
                 }
+            }
+        }
+    }
+
+    // Import to Memly button (for external references)
+    if (hasExternalMedia) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.tertiaryContainer,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onImportAll)
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Save,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Import to Memly",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
             }
         }
     }

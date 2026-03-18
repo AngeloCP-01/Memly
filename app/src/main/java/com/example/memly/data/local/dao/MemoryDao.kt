@@ -8,6 +8,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import com.example.memly.data.local.entity.MediaFileEntity
+import com.example.memly.data.local.entity.MediaSource
 import com.example.memly.data.local.entity.MemoryEntity
 import com.example.memly.data.local.entity.MemoryTagCrossRef
 import com.example.memly.data.local.entity.MemoryWithDetails
@@ -87,6 +88,15 @@ interface MemoryDao {
 
     @Query("SELECT * FROM media_files WHERE fileHash = :hash LIMIT 1")
     suspend fun findMediaByHash(hash: String): MediaFileEntity?
+
+    @Query("SELECT * FROM media_files WHERE mediaStoreUri = :uri LIMIT 1")
+    suspend fun findMediaByUri(uri: String): MediaFileEntity?
+
+    @Query("SELECT * FROM media_files WHERE source = :source")
+    fun getMediaFilesBySource(source: MediaSource): Flow<List<MediaFileEntity>>
+
+    @Update
+    suspend fun updateMediaFile(mediaFile: MediaFileEntity)
 
     // Tag association
     @Insert(onConflict = OnConflictStrategy.IGNORE)
