@@ -63,7 +63,7 @@ fun CollectionListScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Open create dialog when FAB is pressed from bottom nav
-    var lastConsumedTrigger by remember { mutableStateOf(0) }
+    var lastConsumedTrigger by remember { mutableStateOf(createTrigger) }
     LaunchedEffect(createTrigger) {
         if (createTrigger > 0 && createTrigger != lastConsumedTrigger) {
             lastConsumedTrigger = createTrigger

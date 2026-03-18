@@ -36,8 +36,9 @@
 | 4 | Navigation & Screen Redesign    | COMPLETE    |
 | 5 | FAB Bottom Nav Redesign         | COMPLETE    |
 | 6 | Fix: Image loading for Keep Original & dedup | COMPLETE |
+| 7 | Fix: TopAppBar double padding, collection dialog bug, rounded nav bar | COMPLETE |
 
 ## Current Pointer
 
-- **Last completed:** Ad-hoc #6 -- Fix image loading for Keep Original & dedup (2026-03-18) — Fixed dedup to reuse media instead of skipping, URI resolution via name+size match, READ_MEDIA_IMAGES runtime permission, broken reference detection for all sources, timeline card broken image fallback
+- **Last completed:** Ad-hoc #7 -- Fix TopAppBar double padding, collection dialog auto-show bug, rounded bottom nav bar (2026-03-18)
 - **Next:** Phase 2, Section 2 -- Video Playback

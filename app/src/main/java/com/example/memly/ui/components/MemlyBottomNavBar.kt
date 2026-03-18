@@ -46,7 +46,8 @@ data class BottomNavItem(
 
 private class BottomBarCutoutShape(
     private val cutoutRadiusPx: Float,
-    private val fabMarginPx: Float
+    private val fabMarginPx: Float,
+    private val cornerRadiusPx: Float
 ) : Shape {
     override fun createOutline(
         size: Size,
@@ -57,8 +58,13 @@ private class BottomBarCutoutShape(
         val centerX = size.width / 2f
         val totalRadius = cutoutRadiusPx + fabMarginPx
         val curveDepth = totalRadius * 1.0f
+        val cr = cornerRadiusPx
 
-        path.moveTo(0f, 0f)
+        // Start at top-left corner (after rounding)
+        path.moveTo(0f, cr)
+        // Top-left rounded corner
+        path.cubicTo(0f, 0f, 0f, 0f, cr, 0f)
+
         path.lineTo(centerX - totalRadius - 16f, 0f)
 
         // Wider, deeper smooth curve into the cutout
@@ -75,9 +81,18 @@ private class BottomBarCutoutShape(
             centerX + totalRadius + 16f, 0f
         )
 
-        path.lineTo(size.width, 0f)
-        path.lineTo(size.width, size.height)
-        path.lineTo(0f, size.height)
+        // Top-right rounded corner
+        path.lineTo(size.width - cr, 0f)
+        path.cubicTo(size.width, 0f, size.width, 0f, size.width, cr)
+
+        // Bottom-right rounded corner
+        path.lineTo(size.width, size.height - cr)
+        path.cubicTo(size.width, size.height, size.width, size.height, size.width - cr, size.height)
+
+        // Bottom-left rounded corner
+        path.lineTo(cr, size.height)
+        path.cubicTo(0f, size.height, 0f, size.height, 0f, size.height - cr)
+
         path.close()
 
         return Outline.Generic(path)
@@ -101,21 +116,24 @@ fun MemlyBottomNavBar(
     val addButtonColor = colorScheme.tertiary
 
     val fabRadius = 28.dp
-    val fabMargin = 10.dp
+    val fabMargin = 12.dp
+    val cornerRadius = 64.dp
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
             .padding(bottom = 12.dp),
+
         contentAlignment = Alignment.BottomCenter
     ) {
         // The nav bar — always has the cutout shape
         val cutoutShape = with(LocalDensity.current) {
-            remember(fabRadius, fabMargin) {
+            remember(fabRadius, fabMargin, cornerRadius) {
                 BottomBarCutoutShape(
                     cutoutRadiusPx = fabRadius.toPx(),
-                    fabMarginPx = fabMargin.toPx()
+                    fabMarginPx = fabMargin.toPx(),
+                    cornerRadiusPx = cornerRadius.toPx()
                 )
             }
         }

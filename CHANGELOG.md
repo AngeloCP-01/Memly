@@ -4,6 +4,18 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Ad-hoc: UI Fixes & Bottom Nav Rounding
+**Date:** 2026-03-18
+
+### Fixed
+- **TopAppBar double padding**: CaptureScreen and CollectionDetailScreen had extra space at top due to both outer Scaffold and inner TopAppBar adding status bar insets. Added `windowInsets = WindowInsets(0)` to inner TopAppBars.
+- **Collection create dialog auto-showing**: Navigating to CollectionList triggered the create dialog because `lastConsumedTrigger` initialized to 0 instead of the current trigger value, treating stale triggers as new.
+
+### Changed
+- Bottom nav bar now has rounded corners (64dp) on all outer edges via updated `BottomBarCutoutShape`.
+
+---
+
 ## Ad-hoc: Fix Image Loading for Keep Original & Dedup
 **Date:** 2026-03-18
 
