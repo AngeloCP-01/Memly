@@ -8,6 +8,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -123,22 +124,20 @@ fun MapScreen(
                 }
             }
 
-            // Preview card — above marker (centered on screen, offset upward)
+            // Preview card — callout above marker
             AnimatedVisibility(
                 visible = uiState.selectedMemory != null,
                 enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(initialScale = 0.8f),
                 exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut(targetScale = 0.8f),
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .offset(y = (-80).dp)
+                    .offset(y = (-100).dp)
             ) {
                 uiState.selectedMemory?.let { memory ->
                     MemoryMapPreviewCard(
                         memoryWithDetails = memory,
                         onClick = { onMemoryClick(memory.memory.id) },
-                        onDismiss = { viewModel.selectMemory(null) },
-                        modifier = Modifier
-                            .padding(horizontal = 32.dp)
+                        onDismiss = { viewModel.selectMemory(null) }
                     )
                 }
             }
@@ -335,81 +334,69 @@ private fun MemoryMapPreviewCard(
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 4.dp,
-        modifier = modifier.clickable(onClick = onClick)
+        shadowElevation = 6.dp,
+        modifier = modifier
+            .width(120.dp)
+            .clickable(onClick = onClick)
     ) {
-        Row(
-            modifier = Modifier.padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Mood accent strip (left edge)
-            memory.mood?.let { mood ->
+        Box {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // Square thumbnail
                 Box(
                     modifier = Modifier
-                        .width(4.dp)
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(mood.color())
-                )
-                Spacer(Modifier.width(8.dp))
-            }
-
-            // Thumbnail
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                if (thumbnail != null) {
-                    AsyncImage(
-                        model = File(thumbnail),
-                        contentDescription = memory.title ?: "Memory",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    memory.mood?.let { mood ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(mood.color().copy(alpha = 0.3f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = mood.label.first().toString(),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = mood.color()
-                            )
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    if (thumbnail != null) {
+                        AsyncImage(
+                            model = File(thumbnail),
+                            contentDescription = memory.title ?: "Memory",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        memory.mood?.let { mood ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(mood.color().copy(alpha = 0.3f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = mood.label.first().toString(),
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = mood.color()
+                                )
+                            }
                         }
                     }
                 }
-            }
 
-            Spacer(Modifier.width(10.dp))
-
-            // Title
-            Text(
-                text = memory.title ?: "Untitled Memory",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-
-            // Dismiss
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier.size(24.dp)
-            ) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = "Dismiss",
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                // Title below image
+                Text(
+                    text = memory.title ?: "Untitled",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
                 )
             }
+
+            // Small dismiss X
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "Dismiss",
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(16.dp)
+                    .clickable(onClick = onDismiss),
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
         }
     }
 }
