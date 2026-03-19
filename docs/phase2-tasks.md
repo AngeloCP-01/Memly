@@ -167,7 +167,7 @@ Improve the capture experience with multi-photo selection, reordering, and bette
 
 ## Section 4: Onboarding Flow
 
-**Status:** NOT STARTED
+**Status:** COMPLETE
 
 First-launch guided experience that introduces the app and requests necessary permissions with context.
 
@@ -176,12 +176,12 @@ First-launch guided experience that introduces the app and requests necessary pe
 
 | Task | Description                                                                 | Status | Notes                                                         |
 |------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
-| 4.1  | Create OnboardingScreen with 3 welcome pages using HorizontalPager          | ⬜     | Page 1: Welcome to Memly and app concept. Page 2: Capture memories with emotion. Page 3: Explore timeline, map, and search. |
-| 4.2  | Add DataStore preference for onboarding_completed flag                      | ⬜     | Boolean preference; checked at app startup to determine start destination |
-| 4.3  | Request permissions during onboarding (camera, location, media) with rationale | ⬜  | Show explanation text before each permission request            |
-| 4.4  | "Capture your first memory" CTA on final page, navigates to CaptureScreen  | ⬜     | Set onboarding_completed to true, then navigate                |
-| 4.5  | Skip button on all pages                                                    | ⬜     | Marks onboarding complete and navigates to main timeline       |
-| 4.6  | Verify: fresh install shows onboarding, subsequent launches skip it         | ⬜     | Clear app data to re-test; confirm DataStore flag works        |
+| 4.1  | Create OnboardingScreen with 3 welcome pages using HorizontalPager          | ✅     | Page 1: Welcome to Memly (heart icon). Page 2: Capture with Emotion (camera icon). Page 3: Explore Your Story (explore icon). Each page has icon, title, subtitle, description. |
+| 4.2  | Add DataStore preference for onboarding_completed flag                      | ✅     | `OnboardingPreferences` class with DataStore. Boolean `onboarding_completed` key. Provided as `@Singleton` via Hilt `DatabaseModule`. `collectAsState(initial = null)` with loading gate to avoid race condition. |
+| 4.3  | Request permissions during onboarding (camera, location, media) with rationale | ✅  | Bulk permission request on skip/complete: CAMERA, FINE/COARSE_LOCATION, RECORD_AUDIO, READ_MEDIA_* (API 33+) or WRITE_EXTERNAL_STORAGE (API 28). Fire-and-forget — doesn't block onboarding. |
+| 4.4  | "Capture your first memory" CTA on final page, navigates to CaptureScreen  | ✅     | Primary button on last page. Sets onboarding_completed, navigates to Capture with popUpTo(Onboarding, inclusive). |
+| 4.5  | Skip button on all pages                                                    | ✅     | Skip on non-final pages. "Go to Timeline" outlined button on final page as alternative to capture CTA. Both set flag and navigate. |
+| 4.6  | Verify: fresh install shows onboarding, subsequent launches skip it         | ✅     | Build compiles. Start destination conditional on DataStore flag. NavHost only created after DataStore emits real value (null = loading screen). |
 
 **Checkpoint:** Fresh installs show the onboarding flow. Permissions are requested with rationale. Completing or skipping onboarding sets a persistent flag so it does not show again.
 

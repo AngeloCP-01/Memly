@@ -1,6 +1,7 @@
 package com.example.memly.ui.navigation
 
 sealed class Screen(val route: String) {
+    data object Onboarding : Screen("onboarding")
     data object Timeline : Screen("timeline")
     data object Map : Screen("map")
     data object Capture : Screen("capture")

@@ -202,6 +202,22 @@
 - Double confirmation pattern: first dialog warns, second shows exact counts and requires explicit "Delete Everything"
 - `BuildConfig.VERSION_NAME` and `VERSION_CODE` accessed after enabling `buildFeatures { buildConfig = true }`
 
+## DataStore Preferences
+
+- `OnboardingPreferences` in `data/local/` wraps `preferencesDataStore(name = "memly_preferences")`
+- Provided as `@Singleton` via `DatabaseModule`
+- Injected into `MainActivity` via `@Inject lateinit var` (field injection for Activity)
+- Collected with `collectAsState(initial = null)` — null = loading, NavHost not created yet
+- Avoids race condition: DataStore async read completes before NavHost selects start destination
+
+## Onboarding
+
+- `OnboardingScreen` is a full-screen route excluded from bottom nav
+- `Screen.Onboarding` route in sealed class; `MemlyNavGraph` accepts `startDestination` parameter
+- On completion: `popUpTo(Onboarding, inclusive = true)` removes from back stack
+- Permissions requested in bulk via `RequestMultiplePermissions` contract (fire-and-forget)
+- `derivedStateOf` used for `isLastPage` to avoid unnecessary recompositions
+
 ## Error Handling Pattern
 
 - All ViewModels with suspend operations wrap them in `try/catch`

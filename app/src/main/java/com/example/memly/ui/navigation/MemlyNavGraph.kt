@@ -12,20 +12,40 @@ import com.example.memly.ui.collection.CollectionDetailScreen
 import com.example.memly.ui.collection.CollectionListScreen
 import com.example.memly.ui.detail.MemoryDetailScreen
 import com.example.memly.ui.map.MapScreen
+import com.example.memly.ui.onboarding.OnboardingScreen
 import com.example.memly.ui.settings.SettingsScreen
 import com.example.memly.ui.timeline.TimelineScreen
 
 @Composable
 fun MemlyNavGraph(
     navController: NavHostController,
+    startDestination: String = Screen.Timeline.route,
+    onOnboardingComplete: () -> Unit = {},
     createCollectionTrigger: Int = 0,
     modifier: Modifier = Modifier
 ) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Timeline.route,
+        startDestination = startDestination,
         modifier = modifier
     ) {
+        composable(Screen.Onboarding.route) {
+            OnboardingScreen(
+                onComplete = {
+                    onOnboardingComplete()
+                    navController.navigate(Screen.Timeline.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                },
+                onCaptureFirst = {
+                    onOnboardingComplete()
+                    navController.navigate(Screen.Capture.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         composable(Screen.Timeline.route) {
             TimelineScreen(
                 onMemoryClick = { memoryId ->

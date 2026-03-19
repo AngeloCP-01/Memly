@@ -3,6 +3,7 @@ package com.example.memly.di
 import android.content.Context
 import androidx.room.Room
 import com.example.memly.data.local.MemlyDatabase
+import com.example.memly.data.local.OnboardingPreferences
 import com.example.memly.data.local.dao.CollectionDao
 import com.example.memly.data.local.dao.MemoryDao
 import com.example.memly.data.local.dao.TagDao
@@ -17,6 +18,12 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
+
+    @Provides
+    @Singleton
+    fun provideOnboardingPreferences(@ApplicationContext context: Context): OnboardingPreferences {
+        return OnboardingPreferences(context)
+    }
 
     @Provides
     @Singleton

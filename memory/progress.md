@@ -21,7 +21,7 @@
 | 1 | Voice Memos                    | COMPLETE    |
 | 2 | Video Playback                 | COMPLETE    |
 | 3 | Enhanced Capture               | COMPLETE    |
-| 4 | Onboarding Flow                | NOT STARTED |
+| 4 | Onboarding Flow                | COMPLETE    |
 | 5 | Theme & UI Polish              | COMPLETE    |
 | 6 | Map Enhancement                | NOT STARTED |
 | 7 | Data Management                | NOT STARTED |
@@ -46,5 +46,5 @@
 
 ## Current Pointer
 
-- **Last completed:** Phase 2, Section 3 -- Enhanced Capture (2026-03-19)
-- **Next:** Phase 2, Section 4 -- Onboarding Flow
+- **Last completed:** Phase 2, Section 4 -- Onboarding Flow (2026-03-19)
+- **Next:** Phase 2, Section 6 -- Map Enhancement

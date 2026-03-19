@@ -4,6 +4,19 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Phase 2, Section 4: Onboarding Flow
+**Date:** 2026-03-19
+
+### Added
+- **OnboardingScreen**: 3-page HorizontalPager introducing the app (Welcome, Capture with Emotion, Explore Your Story). Each page has an icon in a primaryContainer circle, title, subtitle, and description.
+- **DataStore preferences**: `OnboardingPreferences` class using `datastore-preferences` (1.1.7) for `onboarding_completed` boolean flag. Provided as Hilt singleton.
+- **Permission requests**: Bulk request on onboarding completion/skip — camera, location, audio, and media read/write permissions (API-level-aware).
+- **"Capture Your First Memory" CTA**: Primary button on final page navigates directly to CaptureScreen.
+- **Skip button**: Available on all non-final pages. Final page has "Go to Timeline" alternative.
+- **Navigation gating**: `Screen.Onboarding` added to sealed class. `MemlyNavGraph` accepts dynamic `startDestination`. `MainActivity` waits for DataStore to emit before creating NavHost (avoids race condition with `initial = null` loading gate).
+
+---
+
 ## Ad-hoc: Map Preview & Place Picker Polish
 **Date:** 2026-03-19
 
