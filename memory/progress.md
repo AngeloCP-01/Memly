@@ -42,6 +42,7 @@
 | 9 | Timeline pagination (10 items, lazy load) | COMPLETE |
 | 10 | Video recording via system camera (Photo/Video dialog) | COMPLETE |
 | 11 | Fix: Video thumbnails on timeline cards (use thumbnailPath for videos) | COMPLETE |
+| 12 | Map preview: square callout card above marker, place picker overlay layout, auto-detect location | COMPLETE |
 
 ## Current Pointer
 

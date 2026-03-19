@@ -170,7 +170,10 @@ private fun OsmdroidMapView(
     }
 
     DisposableEffect(Unit) {
-        onDispose { mapView.onDetach() }
+        onDispose {
+            mapView.onPause()
+            mapView.onDetach()
+        }
     }
 
     AndroidView(

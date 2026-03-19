@@ -228,7 +228,7 @@ class CaptureViewModel @Inject constructor(
     }
 
     fun clearLocation() {
-        _uiState.update { it.copy(latitude = null, longitude = null) }
+        _uiState.update { it.copy(latitude = null, longitude = null, placeLabel = "") }
     }
 
     fun updatePlaceLabel(label: String) {

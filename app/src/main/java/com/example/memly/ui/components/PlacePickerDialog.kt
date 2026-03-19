@@ -140,6 +140,7 @@ fun PlacePickerDialog(
             if (location != null) {
                 mapViewRef?.controller?.animateTo(GeoPoint(location.latitude, location.longitude))
                 mapViewRef?.controller?.setZoom(15.0)
+                isDetectingLocation = false
             } else {
                 val token = CancellationTokenSource()
                 client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, token.token)
@@ -152,7 +153,6 @@ fun PlacePickerDialog(
                     }
                     .addOnFailureListener { isDetectingLocation = false }
             }
-            isDetectingLocation = false
         }.addOnFailureListener { isDetectingLocation = false }
     }
 
@@ -170,7 +170,7 @@ fun PlacePickerDialog(
                         connectTimeout = 10_000
                         readTimeout = 10_000
                     }
-                    val response = connection.getInputStream().bufferedReader().readText()
+                    val response = connection.getInputStream().use { it.bufferedReader().readText() }
                     val array = JSONArray(response)
                     (0 until array.length()).map { i ->
                         val obj = array.getJSONObject(i)
@@ -198,7 +198,7 @@ fun PlacePickerDialog(
                         connectTimeout = 10_000
                         readTimeout = 10_000
                     }
-                    val response = connection.getInputStream().bufferedReader().readText()
+                    val response = connection.getInputStream().use { it.bufferedReader().readText() }
                     val obj = org.json.JSONObject(response)
                     obj.optString("display_name", null as String?)
                 } catch (e: Exception) {

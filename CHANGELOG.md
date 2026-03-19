@@ -4,6 +4,21 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Ad-hoc: Map Preview & Place Picker Polish
+**Date:** 2026-03-19
+
+### Changed
+- **Map preview card**: Redesigned as a compact 120dp square callout (image on top, title below) that appears right above the tapped marker with fade+scale animation. Map centers on tapped marker.
+- **Place picker layout**: Restructured to overlay search bar and results on top of a full-screen map. Added "My Location" FAB and auto-detect current location on open.
+
+### Fixed
+- **Location spinner**: `isDetectingLocation` no longer resets prematurely when falling back to `getCurrentLocation`.
+- **MapView lifecycle**: Added `onPause()` before `onDetach()` on Map Screen to properly release tile download threads.
+- **Clear location**: `clearLocation()` now also clears `placeLabel` to avoid stale place name text.
+- **HTTP streams**: Nominatim HTTP connections now use `.use {}` to properly close input streams.
+
+---
+
 ## Phase 2, Section 3: Enhanced Capture
 **Date:** 2026-03-19
 
