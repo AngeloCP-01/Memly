@@ -5,11 +5,10 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.drawable.BitmapDrawable
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -124,12 +123,14 @@ fun MapScreen(
                 }
             }
 
-            // Preview card — top
+            // Preview card — above marker (centered on screen, offset upward)
             AnimatedVisibility(
                 visible = uiState.selectedMemory != null,
-                enter = slideInVertically { -it },
-                exit = slideOutVertically { -it },
-                modifier = Modifier.align(Alignment.TopCenter)
+                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(initialScale = 0.8f),
+                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut(targetScale = 0.8f),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(y = (-80).dp)
             ) {
                 uiState.selectedMemory?.let { memory ->
                     MemoryMapPreviewCard(
@@ -137,8 +138,7 @@ fun MapScreen(
                         onClick = { onMemoryClick(memory.memory.id) },
                         onDismiss = { viewModel.selectMemory(null) },
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .padding(horizontal = 32.dp)
                     )
                 }
             }
@@ -208,6 +208,7 @@ private fun OsmdroidMapView(
 
                     setOnMarkerClickListener { _, _ ->
                         onMarkerClick(memoryWithDetails)
+                        mv.controller.animateTo(GeoPoint(lat, lng))
                         true
                     }
                 }
