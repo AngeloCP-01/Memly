@@ -26,7 +26,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOff
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -66,9 +65,6 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -128,12 +124,12 @@ fun MapScreen(
                 }
             }
 
-            // Preview card — bottom
+            // Preview card — top
             AnimatedVisibility(
                 visible = uiState.selectedMemory != null,
-                enter = slideInVertically { it },
-                exit = slideOutVertically { it },
-                modifier = Modifier.align(Alignment.BottomCenter)
+                enter = slideInVertically { -it },
+                exit = slideOutVertically { -it },
+                modifier = Modifier.align(Alignment.TopCenter)
             ) {
                 uiState.selectedMemory?.let { memory ->
                     MemoryMapPreviewCard(
@@ -142,7 +138,7 @@ fun MapScreen(
                         onDismiss = { viewModel.selectMemory(null) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                 }
             }
@@ -333,122 +329,85 @@ private fun MemoryMapPreviewCard(
     modifier: Modifier = Modifier
 ) {
     val memory = memoryWithDetails.memory
-    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
     val thumbnail = memoryWithDetails.mediaFiles.firstOrNull { it.mediaType != com.example.memly.data.local.entity.MediaType.AUDIO }?.thumbnailPath
 
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 8.dp,
+        shadowElevation = 4.dp,
         modifier = modifier.clickable(onClick = onClick)
     ) {
-        Column {
-            // Mood accent strip
+        Row(
+            modifier = Modifier.padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Mood accent strip (left edge)
             memory.mood?.let { mood ->
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
+                        .width(4.dp)
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(2.dp))
                         .background(mood.color())
                 )
+                Spacer(Modifier.width(8.dp))
             }
 
-            Row(
-                modifier = Modifier.padding(12.dp),
-                verticalAlignment = Alignment.Top
+            // Thumbnail
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
-                // Thumbnail
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    if (thumbnail != null) {
-                        AsyncImage(
-                            model = File(thumbnail),
-                            contentDescription = memory.title ?: "Memory",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        memory.mood?.let { mood ->
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(mood.color().copy(alpha = 0.3f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = mood.label.first().toString(),
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    color = mood.color()
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = memory.title ?: "Untitled Memory",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                if (thumbnail != null) {
+                    AsyncImage(
+                        model = File(thumbnail),
+                        contentDescription = memory.title ?: "Memory",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = dateFormat.format(Date(memory.memoryDate)),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    memory.placeLabel?.let { place ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.LocationOn,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Text(
-                                text = place,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
+                } else {
                     memory.mood?.let { mood ->
-                        Spacer(Modifier.height(4.dp))
-                        Surface(
-                            color = mood.color().copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(6.dp)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(mood.color().copy(alpha = 0.3f)),
+                            contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = mood.label,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = mood.color(),
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                text = mood.label.first().toString(),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = mood.color()
                             )
                         }
                     }
                 }
+            }
 
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Dismiss",
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            Spacer(Modifier.width(10.dp))
+
+            // Title
+            Text(
+                text = memory.title ?: "Untitled Memory",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+
+            // Dismiss
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Dismiss",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
