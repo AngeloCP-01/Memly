@@ -4,6 +4,23 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Phase 2, Section 3: Enhanced Capture
+**Date:** 2026-03-19
+
+### Added
+- **Media preview grid**: 3-column grid replaces horizontal scroll. Shows order badges, video play indicators, and X remove buttons on each item.
+- **Tap-to-swap reorder**: Tap a media item to select it (highlighted with swap icon), tap another to swap their positions. `sortOrder` field persists media order in `MediaFileEntity`.
+- **Save progress indicator**: `LinearProgressIndicator` with step descriptions ("Processing media X of Y…", "Saving memory…") during save flow.
+- **Content validation**: Save button disabled when no content (title, notes, or media). Hint text shown below save button.
+- **Map-based place picker**: Full-screen `PlacePickerDialog` using osmdroid + Nominatim API. Search for places with autocomplete, tap on map to select location, reverse geocoding for place names. "Pick on Map" chip added next to "Get Location" in CaptureScreen.
+
+### Changed
+- Database version bumped 3→4 (destructive migration). `MediaFileEntity` gained `sortOrder: Int` field.
+- `MemoryDao.getMediaFilesForMemory()` now orders by `sortOrder ASC`.
+- `MemoryDetailViewModel` sorts loaded media files by `sortOrder` and assigns correct sortOrder to new media in edit mode.
+
+---
+
 ## Ad-hoc: Fix Video Thumbnails on Timeline Cards
 **Date:** 2026-03-19
 

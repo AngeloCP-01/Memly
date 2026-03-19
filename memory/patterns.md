@@ -68,6 +68,12 @@
 - Gallery uses `PickMultipleVisualMedia` contract
 - Location uses `FusedLocationProviderClient`: tries `lastLocation` first, falls back to `getCurrentLocation(BALANCED_POWER_ACCURACY)`
 - Duplicate media detected by SHA-256 hash before insert
+- Media items displayed in 3-column grid (`MediaPreviewGrid` composable) with order badges and remove buttons
+- Tap-to-swap reorder: `toggleSelectForSwap(index)` selects first item, swapping on second tap
+- `sortOrder` field on `MediaFileEntity` persists media order; set via list index during save
+- `SaveProgress(current, total, step)` tracks save progress with `LinearProgressIndicator`
+- `canSave` computed property on `CaptureUiState`: requires title, notes, or media
+- Place picker: `PlacePickerDialog` composable uses osmdroid + Nominatim API for map-based location selection with search
 
 ## File Management (MediaStore-Based — Implemented)
 

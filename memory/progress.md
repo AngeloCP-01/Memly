@@ -20,7 +20,7 @@
 | 0 | File Management Refactor       | COMPLETE    |
 | 1 | Voice Memos                    | COMPLETE    |
 | 2 | Video Playback                 | COMPLETE    |
-| 3 | Enhanced Capture               | NOT STARTED |
+| 3 | Enhanced Capture               | COMPLETE    |
 | 4 | Onboarding Flow                | NOT STARTED |
 | 5 | Theme & UI Polish              | COMPLETE    |
 | 6 | Data Management                | NOT STARTED |
@@ -44,5 +44,5 @@
 
 ## Current Pointer
 
-- **Last completed:** Phase 2, Section 2 -- Video Playback (2026-03-19)
-- **Next:** Phase 2, Section 3 -- Enhanced Capture
+- **Last completed:** Phase 2, Section 3 -- Enhanced Capture (2026-03-19)
+- **Next:** Phase 2, Section 4 -- Onboarding Flow

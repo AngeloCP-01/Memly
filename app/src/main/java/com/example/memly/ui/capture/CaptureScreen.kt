@@ -8,8 +8,12 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,13 +27,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -38,11 +41,15 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -86,6 +93,7 @@ import coil3.compose.AsyncImage
 import com.example.memly.data.local.entity.MediaType
 import com.example.memly.data.local.entity.Mood
 import com.example.memly.ui.components.AudioPlaybackBar
+import com.example.memly.ui.components.PlacePickerDialog
 import com.example.memly.ui.components.formatDuration
 import com.example.memly.ui.theme.color
 import com.google.android.gms.location.LocationServices
@@ -96,7 +104,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun CaptureScreen(
     onMemorySaved: () -> Unit,
@@ -205,6 +213,9 @@ fun CaptureScreen(
         }
     }
 
+    // Place picker state
+    var showPlacePicker by remember { mutableStateOf(false) }
+
     // Date picker state
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -232,60 +243,46 @@ fun CaptureScreen(
             ) {
                 // === MEDIA SECTION ===
                 Text("Photos & Videos", style = MaterialTheme.typography.titleMedium)
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val visualItems = state.mediaItems.filter { it.mediaType != MediaType.AUDIO }
-                    itemsIndexed(visualItems) { _, item ->
-                        val index = state.mediaItems.indexOf(item)
-                        Box(
-                            modifier = Modifier
-                                .size(100.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
-                        ) {
-                            AsyncImage(
-                                model = item.uri,
-                                contentDescription = "Media",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+
+                val visualItems = state.mediaItems.filter { it.mediaType != MediaType.AUDIO }
+
+                if (visualItems.isNotEmpty()) {
+                    if (visualItems.size > 1) {
+                        Text(
+                            "Tap an item to select, then tap another to swap positions",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    MediaPreviewGrid(
+                        items = visualItems,
+                        allItems = state.mediaItems,
+                        selectedForSwap = state.selectedForSwap,
+                        onSelect = { index -> viewModel.toggleSelectForSwap(index) },
+                        onRemove = { index -> viewModel.removeMedia(index) }
+                    )
+                }
+
+                // Action buttons row
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    MediaActionButton(
+                        icon = Icons.Default.PhotoLibrary,
+                        label = "Gallery",
+                        onClick = {
+                            photoPickerLauncher.launch(
+                                androidx.activity.result.PickVisualMediaRequest(
+                                    ActivityResultContracts.PickVisualMedia.ImageAndVideo
+                                )
                             )
-                            IconButton(
-                                onClick = { viewModel.removeMedia(index) },
-                                modifier = Modifier.align(Alignment.TopEnd).size(24.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = "Remove",
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
                         }
-                    }
-                    item {
-                        // Gallery button
-                        MediaActionButton(
-                            icon = Icons.Default.PhotoLibrary,
-                            label = "Gallery",
-                            onClick = {
-                                photoPickerLauncher.launch(
-                                    androidx.activity.result.PickVisualMediaRequest(
-                                        ActivityResultContracts.PickVisualMedia.ImageAndVideo
-                                    )
-                                )
-                            }
-                        )
-                    }
-                    item {
-                        // Camera button
-                        MediaActionButton(
-                            icon = Icons.Default.CameraAlt,
-                            label = "Camera",
-                            onClick = {
-                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                            }
-                        )
-                    }
+                    )
+                    MediaActionButton(
+                        icon = Icons.Default.CameraAlt,
+                        label = "Camera",
+                        onClick = {
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
+                    )
                 }
 
                 // === VOICE MEMO SECTION ===
@@ -451,6 +448,13 @@ fun CaptureScreen(
                             }
                         }
                     )
+                    AssistChip(
+                        onClick = { showPlacePicker = true },
+                        label = { Text("Pick on Map") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize))
+                        }
+                    )
                     if (state.latitude != null) {
                         IconButton(onClick = { viewModel.clearLocation() }, modifier = Modifier.size(24.dp)) {
                             Icon(Icons.Default.Close, contentDescription = "Clear location")
@@ -516,10 +520,36 @@ fun CaptureScreen(
                 )
 
                 // === SAVE BUTTON ===
+                if (!state.canSave && !state.isLoading) {
+                    Text(
+                        "Add a title, note, or photo to save a memory",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // Progress indicator
+                state.saveProgress?.let { progress ->
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            progress.step,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        LinearProgressIndicator(
+                            progress = { progress.current.toFloat() / progress.total.coerceAtLeast(1).toFloat() },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+
                 Button(
                     onClick = { viewModel.saveMemory() },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
-                    enabled = !state.isLoading,
+                    enabled = state.canSave && !state.isLoading,
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     if (state.isLoading) {
@@ -654,6 +684,158 @@ fun CaptureScreen(
                 }
             }
         )
+    }
+
+    // Place picker dialog
+    if (showPlacePicker) {
+        PlacePickerDialog(
+            initialLatitude = state.latitude,
+            initialLongitude = state.longitude,
+            onPlaceSelected = { lat, lng, placeName ->
+                viewModel.updateLocation(lat, lng)
+                if (!placeName.isNullOrBlank()) {
+                    // Use first part of the display name as place label
+                    val shortName = placeName.split(",").firstOrNull()?.trim() ?: placeName
+                    viewModel.updatePlaceLabel(shortName)
+                }
+                showPlacePicker = false
+            },
+            onDismiss = { showPlacePicker = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MediaPreviewGrid(
+    items: List<MediaItem>,
+    allItems: List<MediaItem>,
+    selectedForSwap: Int?,
+    onSelect: (Int) -> Unit,
+    onRemove: (Int) -> Unit
+) {
+    val columns = 3
+    val rows = (items.size + columns - 1) / columns
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (row in 0 until rows) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                for (col in 0 until columns) {
+                    val visualIndex = row * columns + col
+                    if (visualIndex < items.size) {
+                        val item = items[visualIndex]
+                        val globalIndex = allItems.indexOf(item)
+                        val isSelected = selectedForSwap == globalIndex
+                        val borderColor by animateColorAsState(
+                            targetValue = if (isSelected) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.outline,
+                            label = "borderColor"
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(
+                                    if (isSelected) 3.dp else 1.dp,
+                                    borderColor,
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .combinedClickable(
+                                    onClick = { onSelect(globalIndex) },
+                                    onLongClick = { onSelect(globalIndex) }
+                                )
+                        ) {
+                            AsyncImage(
+                                model = item.uri,
+                                contentDescription = "Media ${visualIndex + 1}",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+
+                            // Video play icon
+                            if (item.mediaType == MediaType.VIDEO) {
+                                Icon(
+                                    Icons.Default.PlayCircle,
+                                    contentDescription = "Video",
+                                    modifier = Modifier
+                                        .align(Alignment.Center)
+                                        .size(32.dp),
+                                    tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.8f)
+                                )
+                            }
+
+                            // Order badge
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(4.dp)
+                                    .size(20.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                                        CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "${visualIndex + 1}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+
+                            // Swap indicator when selected
+                            if (isSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(4.dp)
+                                        .size(24.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.primary,
+                                            CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.SwapHoriz,
+                                        contentDescription = "Selected for swap",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                }
+                            }
+
+                            // Remove button
+                            IconButton(
+                                onClick = { onRemove(globalIndex) },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .size(24.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Remove",
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                                            CircleShape
+                                        ),
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -36,6 +36,12 @@ data class MediaItem(
     val importChoice: ImportChoice? = null
 )
 
+data class SaveProgress(
+    val current: Int,
+    val total: Int,
+    val step: String
+)
+
 data class CaptureUiState(
     val title: String = "",
     val notes: String = "",
@@ -54,8 +60,13 @@ data class CaptureUiState(
     val showImportChoiceDialog: Boolean = false,
     val pendingPickedUris: List<Pair<Uri, MediaType>> = emptyList(),
     val isRecording: Boolean = false,
-    val recordingDurationMs: Long = 0
-)
+    val recordingDurationMs: Long = 0,
+    val saveProgress: SaveProgress? = null,
+    val selectedForSwap: Int? = null
+) {
+    val canSave: Boolean
+        get() = title.isNotBlank() || notes.isNotBlank() || mediaItems.isNotEmpty()
+}
 
 @HiltViewModel
 class CaptureViewModel @Inject constructor(
@@ -179,7 +190,28 @@ class CaptureViewModel @Inject constructor(
 
     fun removeMedia(index: Int) {
         _uiState.update {
-            it.copy(mediaItems = it.mediaItems.toMutableList().apply { removeAt(index) })
+            it.copy(
+                mediaItems = it.mediaItems.toMutableList().apply { removeAt(index) },
+                selectedForSwap = null
+            )
+        }
+    }
+
+    fun toggleSelectForSwap(index: Int) {
+        _uiState.update { state ->
+            val current = state.selectedForSwap
+            when {
+                current == null -> state.copy(selectedForSwap = index)
+                current == index -> state.copy(selectedForSwap = null)
+                else -> {
+                    // Swap the two items
+                    val items = state.mediaItems.toMutableList()
+                    val temp = items[current]
+                    items[current] = items[index]
+                    items[index] = temp
+                    state.copy(mediaItems = items, selectedForSwap = null)
+                }
+            }
         }
     }
 
@@ -226,15 +258,16 @@ class CaptureViewModel @Inject constructor(
 
     fun saveMemory() {
         val state = _uiState.value
-        if (state.title.isBlank() && state.notes.isBlank() && state.mediaItems.isEmpty()) {
+        if (!state.canSave) {
             _uiState.update { it.copy(error = "Add a title, note, or photo to save a memory") }
             return
         }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, saveProgress = null) }
             try {
                 val thumbDir = File(appContext.cacheDir, "thumbnails")
+                val totalItems = state.mediaItems.size
 
                 val memoryEntity = MemoryEntity(
                     title = state.title.ifBlank { null },
@@ -247,9 +280,24 @@ class CaptureViewModel @Inject constructor(
                 )
 
                 val mediaEntities = withContext(Dispatchers.IO) {
-                    state.mediaItems.mapNotNull { item ->
-                        processMediaItem(item, thumbDir)
+                    state.mediaItems.mapIndexedNotNull { index, item ->
+                        _uiState.update {
+                            it.copy(saveProgress = SaveProgress(
+                                current = index + 1,
+                                total = totalItems,
+                                step = "Processing media ${index + 1} of $totalItems…"
+                            ))
+                        }
+                        processMediaItem(item, thumbDir)?.copy(sortOrder = index)
                     }
+                }
+
+                _uiState.update {
+                    it.copy(saveProgress = SaveProgress(
+                        current = totalItems,
+                        total = totalItems,
+                        step = "Saving memory…"
+                    ))
                 }
 
                 memoryRepository.createMemoryWithDetails(
@@ -258,10 +306,10 @@ class CaptureViewModel @Inject constructor(
                     tagNames = state.tags
                 )
 
-                _uiState.update { it.copy(isLoading = false, isSaved = true) }
+                _uiState.update { it.copy(isLoading = false, isSaved = true, saveProgress = null) }
             } catch (e: Exception) {
                 _uiState.update {
-                    it.copy(isLoading = false, error = "Failed to save memory: ${e.message}")
+                    it.copy(isLoading = false, saveProgress = null, error = "Failed to save memory: ${e.message}")
                 }
             }
         }

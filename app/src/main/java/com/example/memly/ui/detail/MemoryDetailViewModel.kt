@@ -124,7 +124,7 @@ class MemoryDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             memory = details.memory,
-                            mediaFiles = details.mediaFiles,
+                            mediaFiles = details.mediaFiles.sortedBy { it.sortOrder },
                             tags = details.tags,
                             isLoading = false,
                             brokenMediaIds = brokenIds
@@ -409,11 +409,17 @@ class MemoryDetailViewModel @Inject constructor(
                 // Add new media files
                 if (state.editNewMediaItems.isNotEmpty()) {
                     val thumbDir = File(appContext.cacheDir, "thumbnails")
+                    // Start sortOrder after existing media
+                    val existingCount = state.mediaFiles
+                        .filter { it.id !in state.editRemovedMediaIds }
+                        .size
                     withContext(Dispatchers.IO) {
-                        for (item in state.editNewMediaItems) {
+                        for ((i, item) in state.editNewMediaItems.withIndex()) {
                             val entity = processMediaItem(item, thumbDir)
                             if (entity != null) {
-                                memoryRepository.addMediaFile(entity)
+                                memoryRepository.addMediaFile(
+                                    entity.copy(sortOrder = existingCount + i)
+                                )
                             }
                         }
                     }

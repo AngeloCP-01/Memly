@@ -83,7 +83,7 @@ interface MemoryDao {
     @Delete
     suspend fun deleteMediaFile(mediaFile: MediaFileEntity)
 
-    @Query("SELECT * FROM media_files WHERE memoryId = :memoryId")
+    @Query("SELECT * FROM media_files WHERE memoryId = :memoryId ORDER BY sortOrder ASC")
     fun getMediaFilesForMemory(memoryId: Long): Flow<List<MediaFileEntity>>
 
     @Query("SELECT * FROM media_files WHERE fileHash = :hash LIMIT 1")

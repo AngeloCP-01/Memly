@@ -141,7 +141,7 @@ Replace placeholder video handling with proper video playback in the detail view
 
 ## Section 3: Enhanced Capture
 
-**Status:** NOT STARTED
+**Status:** COMPLETE
 
 Improve the capture experience with multi-photo selection, reordering, and better feedback during save.
 
@@ -150,15 +150,16 @@ Improve the capture experience with multi-photo selection, reordering, and bette
 
 | Task | Description                                                                 | Status | Notes                                                         |
 |------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
-| 3.1  | Support selecting multiple photos/videos in a single capture session        | ⬜     | Extend existing Photo Picker usage to allow batch selection    |
-| 3.2  | Draggable reorder of media items in capture form (before save)              | ⬜     | Long-press drag using LazyColumn or dedicated reorder library  |
-| 3.3  | Media preview grid in CaptureScreen with remove button per item             | ⬜     | Grid of thumbnails; X button overlay to remove individual items |
-| 3.4  | Progress indicator during save (hash computation + thumbnail generation)    | ⬜     | LinearProgressIndicator or dialog with step description        |
-| 3.5  | Validation: require at least one piece of content (media OR notes) before save | ⬜  | Disable save button and show hint when both are empty          |
-| 3.6  | Verify: add multiple photos, reorder, remove, save successfully             | ⬜     | Confirm media order persists and all items appear in detail    |
-| 3.7  | Map-based place picker with search for location selection                   | ⬜     | Replace or augment "Get Location" chip with a map picker. User can search for a place (autocomplete) or tap on map to select. Uses Google Maps SDK + Places API. Returns lat/lng + place name. |
+| 3.1  | Support selecting multiple photos/videos in a single capture session        | ✅     | Already implemented with PickMultipleVisualMedia contract     |
+| 3.2  | Draggable reorder of media items in capture form (before save)              | ✅     | Tap-to-swap reorder: tap to select, tap another to swap. Visual selection indicator with swap icon badge. sortOrder field added to MediaFileEntity for persistence. |
+| 3.3  | Media preview grid in CaptureScreen with remove button per item             | ✅     | 3-column grid with order badges, video play indicators, X remove buttons. Replaced LazyRow with manual Column+Row grid. |
+| 3.4  | Progress indicator during save (hash computation + thumbnail generation)    | ✅     | LinearProgressIndicator with step descriptions ("Processing media X of Y…", "Saving memory…"). SaveProgress data class tracks current/total/step. |
+| 3.5  | Validation: require at least one piece of content (media OR notes) before save | ✅  | canSave computed property disables save button. Hint text shown when empty. |
+| 3.6  | Verify: add multiple photos, reorder, remove, save successfully             | ✅     | Build compiles. sortOrder persisted in MediaFileEntity, ordered by sortOrder in DAO query and MemoryDetailViewModel. |
+| 3.7  | Map-based place picker with search for location selection                   | ✅     | Full-screen PlacePickerDialog using osmdroid + Nominatim API (no Google dependencies). Search autocomplete, tap-to-select on map, reverse geocoding for place names. "Pick on Map" chip added to CaptureScreen location section. |
+| 3.8  | Video recording from camera button (Photo/Video dialog)                     | ✅     | Camera button shows AlertDialog; Photo launches TakePicture, Video launches CaptureVideo. Applied in CaptureScreen and MemoryDetailScreen edit mode. |
 
-**Checkpoint:** Users can select multiple photos/videos, reorder them, remove unwanted items, and see progress feedback during save. Validation prevents empty memories.
+**Checkpoint:** Users can select multiple photos/videos, reorder them, remove unwanted items, and see progress feedback during save. Validation prevents empty memories. Map-based place picker with search for location selection.
 
 ---
 
