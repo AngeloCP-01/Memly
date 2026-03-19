@@ -140,6 +140,14 @@
 - All cards accept `Modifier` parameter and use `remember` for date formatters
 - Press animation via `pointerInput` + `detectTapGestures` + `animateFloatAsState(0.97f)`
 
+## Custom Toast
+
+- `MemlyToast` in `ui/components/MemlyToast.kt` — centered overlay toast replacing Material 3 Snackbar
+- Accepts `message: String?`, `onDismiss`, `isError: Boolean`, `durationMs: Long`
+- Uses `AnimatedVisibility` with `fadeIn + scaleIn` / `fadeOut + scaleOut`
+- Error style: `errorContainer` / `onErrorContainer`; Success style: `secondaryContainer` / `onSecondaryContainer`
+- Pattern: screen holds `var toastMessage by remember { mutableStateOf<String?>(null) }`, LaunchedEffect sets it from ViewModel error state, MemlyToast auto-clears via `onDismiss = { toastMessage = null }`
+
 ## Detail Screen
 
 - `MemoryDetailViewModel` loads via `SavedStateHandle["memoryId"]`
@@ -222,7 +230,9 @@
 
 - All ViewModels with suspend operations wrap them in `try/catch`
 - Error exposed as `error: String?` field in UiState
-- Screens display errors via `LaunchedEffect(uiState.error)` + `SnackbarHostState.showSnackbar()`
+- Screens display errors via `LaunchedEffect(uiState.error)` → set local `toastMessage` state → `MemlyToast` composable
+- `MemlyToast` shows centered overlay with fade+scale animation, auto-dismisses after 3s
+- Supports `isError = true` (red errorContainer) and `isError = false` (teal secondaryContainer) styles
 - After showing, call `viewModel.clearError()` to reset
 - Flow-based ViewModels (Timeline, Map, Search) rely on Room's internal error handling — Room flows don't throw
 - CaptureViewModel is the exemplar: has error, loading, validation, and file I/O error handling

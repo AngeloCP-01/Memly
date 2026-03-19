@@ -47,8 +47,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -79,6 +77,7 @@ import com.example.memly.data.local.entity.MemoryEntity
 import com.example.memly.data.local.entity.Mood
 import com.example.memly.data.local.entity.TagEntity
 import com.example.memly.ui.components.AudioPlaybackBar
+import com.example.memly.ui.components.MemlyToast
 import com.example.memly.ui.components.VideoPlayer
 import com.example.memly.ui.theme.color
 import android.Manifest
@@ -106,7 +105,7 @@ fun MemoryDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val snackbarHostState = remember { SnackbarHostState() }
+    var toastMessage by remember { mutableStateOf<String?>(null) }
     val dateFormat = remember { SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault()) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -177,13 +176,12 @@ fun MemoryDetailScreen(
     // Show errors
     LaunchedEffect(state.error) {
         state.error?.let {
-            snackbarHostState.showSnackbar(it)
+            toastMessage = it
             viewModel.clearError()
         }
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (!state.isLoading && state.memory != null) {
                 if (state.isEditing) {
@@ -212,6 +210,7 @@ fun MemoryDetailScreen(
             }
         }
     ) { padding ->
+        Box(modifier = Modifier.fillMaxSize()) {
         when {
             state.isLoading -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -305,6 +304,12 @@ fun MemoryDetailScreen(
                     Spacer(Modifier.height(80.dp)) // FAB clearance
                 }
             }
+        }
+
+        MemlyToast(
+            message = toastMessage,
+            onDismiss = { toastMessage = null }
+        )
         }
     }
 

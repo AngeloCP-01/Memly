@@ -66,8 +66,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -93,6 +91,7 @@ import coil3.compose.AsyncImage
 import com.example.memly.data.local.entity.MediaType
 import com.example.memly.data.local.entity.Mood
 import com.example.memly.ui.components.AudioPlaybackBar
+import com.example.memly.ui.components.MemlyToast
 import com.example.memly.ui.components.PlacePickerDialog
 import com.example.memly.ui.components.formatDuration
 import com.example.memly.ui.theme.color
@@ -112,7 +111,7 @@ fun CaptureScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val snackbarHostState = remember { SnackbarHostState() }
+    var toastMessage by remember { mutableStateOf<String?>(null) }
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
     // Navigate back when saved
@@ -120,10 +119,10 @@ fun CaptureScreen(
         if (state.isSaved) onMemorySaved()
     }
 
-    // Show error in snackbar
+    // Show error in toast
     LaunchedEffect(state.error) {
         state.error?.let {
-            snackbarHostState.showSnackbar(it)
+            toastMessage = it
             viewModel.clearError()
         }
     }
@@ -231,7 +230,6 @@ fun CaptureScreen(
                 windowInsets = WindowInsets(0)
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             Column(
@@ -567,6 +565,11 @@ fun CaptureScreen(
 
                 Spacer(Modifier.height(16.dp))
             }
+
+            MemlyToast(
+                message = toastMessage,
+                onDismiss = { toastMessage = null }
+            )
         }
     }
 

@@ -25,16 +25,17 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import com.example.memly.ui.components.MemlyToast
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,18 +48,21 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
+    var toastMessage by remember { mutableStateOf<String?>(null) }
+    var toastIsError by remember { mutableStateOf(true) }
 
     LaunchedEffect(uiState.clearComplete) {
         if (uiState.clearComplete) {
-            snackbarHostState.showSnackbar("All data cleared successfully")
+            toastMessage = "All data cleared successfully"
+            toastIsError = false
             viewModel.clearCompleteAcknowledged()
         }
     }
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
-            snackbarHostState.showSnackbar(it)
+            toastMessage = it
+            toastIsError = true
             viewModel.clearError()
         }
     }
@@ -100,9 +104,10 @@ fun SettingsScreen(
             Spacer(Modifier.height(32.dp))
         }
 
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter)
+        MemlyToast(
+            message = toastMessage,
+            onDismiss = { toastMessage = null },
+            isError = toastIsError
         )
     }
 

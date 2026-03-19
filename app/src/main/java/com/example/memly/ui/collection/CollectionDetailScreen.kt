@@ -34,8 +34,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,7 +41,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.memly.data.local.entity.MemoryWithDetails
+import com.example.memly.ui.components.MemlyToast
 import com.example.memly.ui.components.MemorySearchResultCard
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -65,17 +66,16 @@ fun CollectionDetailScreen(
     viewModel: CollectionDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
+    var toastMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
-            snackbarHostState.showSnackbar(it)
+            toastMessage = it
             viewModel.clearError()
         }
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -98,6 +98,7 @@ fun CollectionDetailScreen(
             }
         }
     ) { padding ->
+        Box(modifier = Modifier.fillMaxSize()) {
         when {
             uiState.isLoading -> {
                 Box(
@@ -172,6 +173,12 @@ fun CollectionDetailScreen(
                     item { Spacer(Modifier.height(72.dp)) }
                 }
             }
+        }
+
+        MemlyToast(
+            message = toastMessage,
+            onDismiss = { toastMessage = null }
+        )
         }
     }
 

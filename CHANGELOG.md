@@ -4,6 +4,24 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Ad-hoc: Custom MemlyToast (replaces Snackbar)
+**Date:** 2026-03-19
+
+### Added
+- **MemlyToast composable**: Custom centered overlay toast in `ui/components/MemlyToast.kt`. Displays messages in the center of the screen with fade+scale animation. Auto-dismisses after 3 seconds. Supports error (red errorContainer) and success (teal secondaryContainer) styles.
+
+### Changed
+- **SettingsScreen**: Replaced `SnackbarHost` with `MemlyToast`. Success messages (clear data) use teal style, errors use red style.
+- **CaptureScreen**: Replaced `SnackbarHost` with `MemlyToast` for error display.
+- **MemoryDetailScreen**: Replaced `SnackbarHost` with `MemlyToast` for error display.
+- **CollectionDetailScreen**: Replaced `SnackbarHost` with `MemlyToast` for error display.
+- **CollectionListScreen**: Replaced `SnackbarHost` with `MemlyToast` for error display.
+
+### Fixed
+- Snackbar messages were rendered behind the bottom navigation bar, making them invisible or hard to read.
+
+---
+
 ## Phase 2, Section 4: Onboarding Flow
 **Date:** 2026-03-19
 

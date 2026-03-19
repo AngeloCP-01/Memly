@@ -32,8 +32,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.example.memly.ui.components.MemlyToast
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,7 +59,7 @@ fun CollectionListScreen(
     viewModel: CollectionListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
+    var toastMessage by remember { mutableStateOf<String?>(null) }
 
     // Open create dialog when FAB is pressed from bottom nav
     var lastConsumedTrigger by remember { mutableStateOf(createTrigger) }
@@ -73,7 +72,7 @@ fun CollectionListScreen(
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
-            snackbarHostState.showSnackbar(it)
+            toastMessage = it
             viewModel.clearError()
         }
     }
@@ -171,10 +170,9 @@ fun CollectionListScreen(
             }
         }
 
-        // Snackbar
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter)
+        MemlyToast(
+            message = toastMessage,
+            onDismiss = { toastMessage = null }
         )
     }
 

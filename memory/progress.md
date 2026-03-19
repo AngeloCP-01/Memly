@@ -43,8 +43,9 @@
 | 10 | Video recording via system camera (Photo/Video dialog) | COMPLETE |
 | 11 | Fix: Video thumbnails on timeline cards (use thumbnailPath for videos) | COMPLETE |
 | 12 | Map preview: square callout card above marker, place picker overlay layout, auto-detect location | COMPLETE |
+| 13 | Custom MemlyToast replaces all Snackbars (centered overlay, fade+scale animation) | COMPLETE |
 
 ## Current Pointer
 
-- **Last completed:** Phase 2, Section 4 -- Onboarding Flow (2026-03-19)
+- **Last completed:** Ad-hoc #13 -- Custom MemlyToast (2026-03-19)
 - **Next:** Phase 2, Section 6 -- Map Enhancement
