@@ -4,6 +4,21 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Phase 2, Section 2: Video Playback
+**Date:** 2026-03-19
+
+### Added
+- **Media3 ExoPlayer** (1.6.0): `media3-exoplayer` and `media3-ui` dependencies for video playback.
+- **VideoPlayer composable**: Wraps `PlayerView` in `AndroidView` with built-in playback controls, lifecycle-aware pause/resume, and proper player release on dispose.
+- **Video playback in detail screen**: `PhotoHeroSection` detects `VIDEO` media type and renders `VideoPlayer` instead of static `AsyncImage`.
+- **Video play icon indicators**: `PlayCircle` badges on timeline cards (`MemoryCard`, `MemoryCarouselCard`, `MemorySearchResultCard`) and timeline slideshow to visually distinguish videos from photos.
+
+### Changed
+- `MemoryCard` audio indicator refactored from single icon to `Row` layout supporting both video and audio badges side by side.
+- Timeline slideshow now tracks `visualMediaFiles` (not just URIs) to detect video type per slide.
+
+---
+
 ## Ad-hoc: Edit Media, Collection UX, Location Fallback
 **Date:** 2026-03-18
 

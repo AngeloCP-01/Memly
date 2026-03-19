@@ -96,6 +96,18 @@
 - Audio indicator: `Icons.Default.Mic` badge on cards; `AudioPlaybackBar` on DetailScreen below photo hero
 - `ThumbnailUtil.generateThumbnail()` returns `null` for `AUDIO` — no visual thumbnail
 
+## Video Playback
+
+- `VideoPlayer` composable in `ui/components/VideoPlayer.kt` wraps Media3 `PlayerView` in `AndroidView`
+- Media3 ExoPlayer 1.6.0 (`media3-exoplayer` + `media3-ui`)
+- `PlayerView` with `useController = true` provides built-in play/pause/seek/fullscreen controls
+- `AspectRatioFrameLayout.RESIZE_MODE_FIT` preserves native video aspect ratio
+- ExoPlayer instance keyed on `videoUri` via `remember(videoUri)` — handles URI changes
+- Single `DisposableEffect(videoUri, lifecycleOwner)` manages both lifecycle (pause/resume) and release
+- `LifecycleEventObserver`: pause on `ON_PAUSE`, resume on `ON_RESUME` if was playing
+- Video play icon: `Icons.Default.PlayCircle` badge on cards (timeline, carousel, search result) and slideshow
+- Videos detected via `mediaFile.mediaType == MediaType.VIDEO` in `PhotoHeroSection` — renders `VideoPlayer` instead of `AsyncImage`
+
 ## Timeline
 
 - `TimelineUiState` contains `allMemories`, `groups: List<TimelineGroup>`, and `timeHopMemories`

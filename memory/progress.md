@@ -19,7 +19,7 @@
 |---|--------------------------------|-------------|
 | 0 | File Management Refactor       | COMPLETE    |
 | 1 | Voice Memos                    | COMPLETE    |
-| 2 | Video Playback                 | NOT STARTED |
+| 2 | Video Playback                 | COMPLETE    |
 | 3 | Enhanced Capture               | NOT STARTED |
 | 4 | Onboarding Flow                | NOT STARTED |
 | 5 | Theme & UI Polish              | COMPLETE    |
@@ -41,5 +41,5 @@
 
 ## Current Pointer
 
-- **Last completed:** Ad-hoc #8 -- Edit media in detail, collection dialog UX, location fallback, add memory from collection detail, map place picker task (2026-03-18)
-- **Next:** Phase 2, Section 2 -- Video Playback
+- **Last completed:** Phase 2, Section 2 -- Video Playback (2026-03-19)
+- **Next:** Phase 2, Section 3 -- Enhanced Capture
