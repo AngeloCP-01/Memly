@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -68,6 +69,12 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import java.io.File
 import java.net.URL
 import java.net.URLEncoder
@@ -103,12 +110,50 @@ fun PlacePickerDialog(
 
     val primaryColor = MaterialTheme.colorScheme.primary.toArgb()
 
+    var isDetectingLocation by remember { mutableStateOf(false) }
+
     // Configure osmdroid
     LaunchedEffect(Unit) {
         Configuration.getInstance().apply {
             userAgentValue = context.packageName
             osmdroidTileCache = File(context.cacheDir, "osmdroid")
         }
+    }
+
+    // Auto-detect current location on open (only if no initial location provided)
+    @Suppress("MissingPermission")
+    LaunchedEffect(Unit) {
+        if (initialLatitude != null && initialLongitude != null) return@LaunchedEffect
+
+        val hasFine = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val hasCoarse = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!hasFine && !hasCoarse) return@LaunchedEffect
+
+        isDetectingLocation = true
+        val client = LocationServices.getFusedLocationProviderClient(context)
+        client.lastLocation.addOnSuccessListener { location ->
+            if (location != null) {
+                mapViewRef?.controller?.animateTo(GeoPoint(location.latitude, location.longitude))
+                mapViewRef?.controller?.setZoom(15.0)
+            } else {
+                val token = CancellationTokenSource()
+                client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, token.token)
+                    .addOnSuccessListener { fresh ->
+                        if (fresh != null) {
+                            mapViewRef?.controller?.animateTo(GeoPoint(fresh.latitude, fresh.longitude))
+                            mapViewRef?.controller?.setZoom(15.0)
+                        }
+                        isDetectingLocation = false
+                    }
+                    .addOnFailureListener { isDetectingLocation = false }
+            }
+            isDetectingLocation = false
+        }.addOnFailureListener { isDetectingLocation = false }
     }
 
     fun searchPlaces(query: String) {
@@ -365,6 +410,40 @@ fun PlacePickerDialog(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    }
+                }
+
+                // My Location button
+                @Suppress("MissingPermission")
+                androidx.compose.material3.SmallFloatingActionButton(
+                    onClick = {
+                        val hasPerm = ContextCompat.checkSelfPermission(
+                            context, Manifest.permission.ACCESS_FINE_LOCATION
+                        ) == PackageManager.PERMISSION_GRANTED ||
+                            ContextCompat.checkSelfPermission(
+                                context, Manifest.permission.ACCESS_COARSE_LOCATION
+                            ) == PackageManager.PERMISSION_GRANTED
+                        if (!hasPerm) return@SmallFloatingActionButton
+                        isDetectingLocation = true
+                        val client = LocationServices.getFusedLocationProviderClient(context)
+                        client.lastLocation.addOnSuccessListener { loc ->
+                            if (loc != null) {
+                                mapViewRef?.controller?.animateTo(GeoPoint(loc.latitude, loc.longitude))
+                                mapViewRef?.controller?.setZoom(16.0)
+                            }
+                            isDetectingLocation = false
+                        }.addOnFailureListener { isDetectingLocation = false }
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 16.dp, bottom = 130.dp),
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ) {
+                    if (isDetectingLocation) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Default.MyLocation, contentDescription = "My location")
                     }
                 }
 
