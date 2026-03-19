@@ -26,7 +26,8 @@ data class TimelineUiState(
     val searchQuery: String = "",
     val moodFilters: Set<Mood> = emptySet(),
     val dateFilter: Long? = null,
-    val isFiltering: Boolean = false
+    val isFiltering: Boolean = false,
+    val hasMoreMemories: Boolean = false
 )
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
@@ -40,6 +41,7 @@ class TimelineViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     private val _moodFilters = MutableStateFlow<Set<Mood>>(emptySet())
     private val _dateFilter = MutableStateFlow<Long?>(null)
+    private val _visibleCount = MutableStateFlow(PAGE_SIZE)
 
     private val allMemoriesFlow = memoryRepository.getAllMemoriesWithDetails()
 
@@ -61,8 +63,9 @@ class TimelineViewModel @Inject constructor(
         _searchQuery,
         combine(searchResults, _moodFilters, _dateFilter) { results, moods, date ->
             Triple(results, moods, date)
-        }
-    ) { all, timeHop, query, (results, moods, date) ->
+        },
+        _visibleCount
+    ) { all, timeHop, query, (results, moods, date), visibleCount ->
         var filtered = results
 
         if (moods.isNotEmpty()) {
@@ -78,15 +81,17 @@ class TimelineViewModel @Inject constructor(
         }
 
         val isFiltering = query.isNotBlank() || moods.isNotEmpty() || date != null
+        val paged = filtered.take(visibleCount)
 
         TimelineUiState(
             allMemories = all,
-            displayMemories = filtered,
+            displayMemories = paged,
             timeHopMemories = timeHop,
             searchQuery = query,
             moodFilters = moods,
             dateFilter = date,
-            isFiltering = isFiltering
+            isFiltering = isFiltering,
+            hasMoreMemories = filtered.size > visibleCount
         )
     }.stateIn(
         scope = viewModelScope,
@@ -94,29 +99,42 @@ class TimelineViewModel @Inject constructor(
         initialValue = TimelineUiState()
     )
 
+    fun loadMore() {
+        _visibleCount.update { it + PAGE_SIZE }
+    }
+
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
+        _visibleCount.value = PAGE_SIZE
     }
 
     fun clearSearch() {
         _searchQuery.value = ""
+        _visibleCount.value = PAGE_SIZE
     }
 
     fun toggleMoodFilter(mood: Mood) {
         _moodFilters.update { current ->
             if (mood in current) current - mood else current + mood
         }
+        _visibleCount.value = PAGE_SIZE
     }
 
     fun clearMoodFilters() {
         _moodFilters.value = emptySet()
+        _visibleCount.value = PAGE_SIZE
     }
 
     fun setDateFilter(millis: Long?) {
         _dateFilter.value = millis
+        _visibleCount.value = PAGE_SIZE
     }
 
     private fun isSameDay(a: Calendar, b: Calendar): Boolean =
         a.get(Calendar.YEAR) == b.get(Calendar.YEAR) &&
                 a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR)
+
+    companion object {
+        private const val PAGE_SIZE = 10
+    }
 }

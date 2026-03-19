@@ -4,6 +4,17 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Ad-hoc: Timeline Pagination
+**Date:** 2026-03-19
+
+### Added
+- **Lazy pagination on timeline**: Memories sorted by `memoryDate` DESC (latest first), displaying 10 at a time with automatic lazy loading of the next 10 when scrolling within 3 pages of the end.
+- `hasMoreMemories` flag in `TimelineUiState` to signal when more pages are available.
+- `loadMore()` in `TimelineViewModel` to increment visible count.
+- Pagination resets on search query, mood filter, or date filter changes.
+
+---
+
 ## Phase 2, Section 2: Video Playback
 **Date:** 2026-03-19
 

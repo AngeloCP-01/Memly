@@ -171,6 +171,8 @@ fun TimelineScreen(
             Spacer(Modifier.height(16.dp))
             MemoryPager(
                 memories = state.displayMemories,
+                hasMore = state.hasMoreMemories,
+                onLoadMore = viewModel::loadMore,
                 onMemoryClick = onMemoryClick
             )
         }
@@ -588,10 +590,19 @@ private fun ActiveFilterChips(
 @Composable
 private fun MemoryPager(
     memories: List<MemoryWithDetails>,
+    hasMore: Boolean,
+    onLoadMore: () -> Unit,
     onMemoryClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val pagerState = rememberPagerState(pageCount = { memories.size })
+
+    // Load more when user is within 3 pages of the end
+    LaunchedEffect(pagerState.currentPage, memories.size, hasMore) {
+        if (hasMore && pagerState.currentPage >= memories.size - 3) {
+            onLoadMore()
+        }
+    }
 
     HorizontalPager(
         state = pagerState,

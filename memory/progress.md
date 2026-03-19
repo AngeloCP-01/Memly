@@ -38,6 +38,7 @@
 | 6 | Fix: Image loading for Keep Original & dedup | COMPLETE |
 | 7 | Fix: TopAppBar double padding, collection dialog bug, rounded nav bar | COMPLETE |
 | 8 | Fix: Edit media, collection UX, location fallback, add-to-collection from detail | COMPLETE |
+| 9 | Timeline pagination (10 items, lazy load) | COMPLETE |
 
 ## Current Pointer
 
