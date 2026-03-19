@@ -40,6 +40,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -119,8 +120,11 @@ fun PlacePickerDialog(
                 try {
                     val encoded = URLEncoder.encode(query, "UTF-8")
                     val url = "https://nominatim.openstreetmap.org/search?q=$encoded&format=json&limit=5&addressdetails=0"
-                    val connection = URL(url).openConnection()
-                    connection.setRequestProperty("User-Agent", context.packageName)
+                    val connection = URL(url).openConnection().apply {
+                        setRequestProperty("User-Agent", context.packageName)
+                        connectTimeout = 10_000
+                        readTimeout = 10_000
+                    }
                     val response = connection.getInputStream().bufferedReader().readText()
                     val array = JSONArray(response)
                     (0 until array.length()).map { i ->
@@ -144,8 +148,11 @@ fun PlacePickerDialog(
             selectedPlaceName = withContext(Dispatchers.IO) {
                 try {
                     val url = "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lon&format=json&zoom=18"
-                    val connection = URL(url).openConnection()
-                    connection.setRequestProperty("User-Agent", context.packageName)
+                    val connection = URL(url).openConnection().apply {
+                        setRequestProperty("User-Agent", context.packageName)
+                        connectTimeout = 10_000
+                        readTimeout = 10_000
+                    }
                     val response = connection.getInputStream().bufferedReader().readText()
                     val obj = org.json.JSONObject(response)
                     obj.optString("display_name", null as String?)
@@ -369,17 +376,21 @@ fun PlacePickerDialog(
                                 })
                                 overlays.add(eventsOverlay)
 
-                                // Show initial marker if location provided
-                                if (initialLatitude != null && initialLongitude != null) {
-                                    mapViewRef = this
-                                    // Marker will be added after mapViewRef is set
-                                }
-
+                                onResume()
                                 mapViewRef = this
                             }
                         },
                         modifier = Modifier.fillMaxSize()
                     )
+
+                    // Clean up MapView lifecycle to prevent memory leaks
+                    DisposableEffect(Unit) {
+                        onDispose {
+                            mapViewRef?.onPause()
+                            mapViewRef?.onDetach()
+                            mapViewRef = null
+                        }
+                    }
 
                     // Hint overlay
                     if (selectedLat == null) {

@@ -199,10 +199,12 @@ class CaptureViewModel @Inject constructor(
 
     fun toggleSelectForSwap(index: Int) {
         _uiState.update { state ->
+            if (index !in state.mediaItems.indices) return@update state.copy(selectedForSwap = null)
             val current = state.selectedForSwap
             when {
                 current == null -> state.copy(selectedForSwap = index)
                 current == index -> state.copy(selectedForSwap = null)
+                current !in state.mediaItems.indices -> state.copy(selectedForSwap = index)
                 else -> {
                     // Swap the two items
                     val items = state.mediaItems.toMutableList()
