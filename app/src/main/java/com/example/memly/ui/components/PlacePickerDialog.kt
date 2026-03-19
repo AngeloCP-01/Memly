@@ -221,183 +221,165 @@ fun PlacePickerDialog(
                 )
             }
         ) { padding ->
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
             ) {
-                // Search bar
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search for a place...") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    singleLine = true,
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    trailingIcon = {
-                        if (isSearching) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp
-                            )
+                val defaultLat = initialLatitude ?: 14.5995
+                val defaultLng = initialLongitude ?: 120.9842
+                val defaultZoom = if (initialLatitude != null) 15.0 else 5.0
+
+                // Map fills the entire area
+                AndroidView(
+                    factory = { ctx ->
+                        MapView(ctx).apply {
+                            setTileSource(TileSourceFactory.MAPNIK)
+                            setMultiTouchControls(true)
+                            controller.setZoom(defaultZoom)
+                            controller.setCenter(GeoPoint(defaultLat, defaultLng))
+
+                            val eventsOverlay = MapEventsOverlay(object : MapEventsReceiver {
+                                override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
+                                    selectedLat = p.latitude
+                                    selectedLng = p.longitude
+                                    selectedPlaceName = null
+                                    reverseGeocode(p.latitude, p.longitude)
+                                    updateMapMarker(p.latitude, p.longitude)
+                                    return true
+                                }
+
+                                override fun longPressHelper(p: GeoPoint): Boolean = false
+                            })
+                            overlays.add(eventsOverlay)
+
+                            onResume()
+                            mapViewRef = this
                         }
                     },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { searchPlaces(searchQuery) }),
-                    shape = RoundedCornerShape(12.dp)
+                    modifier = Modifier.fillMaxSize()
                 )
 
-                // Search results
-                if (showResults && searchResults.isNotEmpty()) {
-                    Surface(
+                // Clean up MapView lifecycle
+                DisposableEffect(Unit) {
+                    onDispose {
+                        mapViewRef?.onPause()
+                        mapViewRef?.onDetach()
+                        mapViewRef = null
+                    }
+                }
+
+                // Search bar + results overlay at top
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter)
+                ) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Search for a place...") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp)
-                            .heightIn(max = 200.dp),
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (isSearching) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else if (searchQuery.isNotBlank()) {
+                                IconButton(onClick = { searchPlaces(searchQuery) }) {
+                                    Icon(Icons.Default.Search, contentDescription = "Search")
+                                }
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { searchPlaces(searchQuery) }),
                         shape = RoundedCornerShape(12.dp),
-                        tonalElevation = 2.dp,
-                        shadowElevation = 4.dp
-                    ) {
-                        LazyColumn {
-                            items(searchResults) { result ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            selectedLat = result.lat
-                                            selectedLng = result.lon
-                                            selectedPlaceName = result.displayName
-                                            showResults = false
-                                            searchQuery = result.displayName.split(",").firstOrNull()?.trim() ?: ""
-                                            updateMapMarker(result.lat, result.lon)
-                                            mapViewRef?.controller?.setZoom(16.0)
-                                        }
-                                        .padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Default.LocationOn,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(20.dp),
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        result.displayName,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+
+                    // Search results dropdown
+                    if (showResults && searchResults.isNotEmpty()) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp)
+                                .heightIn(max = 250.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            tonalElevation = 4.dp,
+                            shadowElevation = 8.dp
+                        ) {
+                            LazyColumn {
+                                items(searchResults) { result ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                selectedLat = result.lat
+                                                selectedLng = result.lon
+                                                selectedPlaceName = result.displayName
+                                                showResults = false
+                                                searchQuery = result.displayName.split(",").firstOrNull()?.trim() ?: ""
+                                                updateMapMarker(result.lat, result.lon)
+                                                mapViewRef?.controller?.setZoom(16.0)
+                                            }
+                                            .padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            Icons.Default.LocationOn,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            result.displayName,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                if (showResults && searchResults.isEmpty() && !isSearching) {
-                    Text(
-                        "No results found",
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                // Selected location info
-                if (selectedLat != null && selectedLng != null) {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 4.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    if (showResults && searchResults.isEmpty() && !isSearching) {
+                        Surface(
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surface
                         ) {
-                            Icon(
-                                Icons.Default.LocationOn,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Spacer(Modifier.width(4.dp))
                             Text(
-                                selectedPlaceName
-                                    ?: String.format(
-                                        java.util.Locale.ROOT,
-                                        "%.5f, %.5f",
-                                        selectedLat,
-                                        selectedLng
-                                    ),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
+                                "No results found",
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                 }
 
-                // Map
-                Box(
+                // Bottom section: selected location + confirm button
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
+                        .align(Alignment.BottomCenter)
                 ) {
-                    val defaultLat = initialLatitude ?: 14.5995
-                    val defaultLng = initialLongitude ?: 120.9842
-                    val defaultZoom = if (initialLatitude != null) 15.0 else 5.0
-
-                    AndroidView(
-                        factory = { ctx ->
-                            MapView(ctx).apply {
-                                setTileSource(TileSourceFactory.MAPNIK)
-                                setMultiTouchControls(true)
-                                controller.setZoom(defaultZoom)
-                                controller.setCenter(GeoPoint(defaultLat, defaultLng))
-
-                                // Tap to select location
-                                val eventsOverlay = MapEventsOverlay(object : MapEventsReceiver {
-                                    override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
-                                        selectedLat = p.latitude
-                                        selectedLng = p.longitude
-                                        selectedPlaceName = null
-                                        reverseGeocode(p.latitude, p.longitude)
-                                        updateMapMarker(p.latitude, p.longitude)
-                                        return true
-                                    }
-
-                                    override fun longPressHelper(p: GeoPoint): Boolean = false
-                                })
-                                overlays.add(eventsOverlay)
-
-                                onResume()
-                                mapViewRef = this
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
-
-                    // Clean up MapView lifecycle to prevent memory leaks
-                    DisposableEffect(Unit) {
-                        onDispose {
-                            mapViewRef?.onPause()
-                            mapViewRef?.onDetach()
-                            mapViewRef = null
-                        }
-                    }
-
                     // Hint overlay
-                    if (selectedLat == null) {
+                    if (selectedLat == null && !showResults) {
                         Surface(
                             modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(16.dp),
+                                .align(Alignment.CenterHorizontally)
+                                .padding(bottom = 8.dp),
                             shape = RoundedCornerShape(8.dp),
                             color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
                             tonalElevation = 2.dp
@@ -410,25 +392,63 @@ fun PlacePickerDialog(
                             )
                         }
                     }
-                }
 
-                // Confirm button
-                Button(
-                    onClick = {
-                        if (selectedLat != null && selectedLng != null) {
-                            onPlaceSelected(selectedLat!!, selectedLng!!, selectedPlaceName)
+                    // Selected location info
+                    if (selectedLat != null && selectedLng != null) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    selectedPlaceName
+                                        ?: String.format(
+                                            java.util.Locale.ROOT,
+                                            "%.5f, %.5f",
+                                            selectedLat,
+                                            selectedLng
+                                        ),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                         }
-                    },
-                    enabled = selectedLat != null && selectedLng != null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp)
-                        .height(48.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Confirm Location")
+                    }
+
+                    // Confirm button
+                    Button(
+                        onClick = {
+                            if (selectedLat != null && selectedLng != null) {
+                                onPlaceSelected(selectedLat!!, selectedLng!!, selectedPlaceName)
+                            }
+                        },
+                        enabled = selectedLat != null && selectedLng != null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Confirm Location")
+                    }
                 }
             }
         }
