@@ -4,6 +4,14 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Ad-hoc: Fix Video Thumbnails on Timeline Cards
+**Date:** 2026-03-19
+
+### Fixed
+- **Video thumbnails on timeline cards**: Videos displayed broken images because Coil cannot decode video content URIs. `MemoryPagerCard` and `MemoryCard` now use `thumbnailPath` (pre-generated frame) for VIDEO media, loaded as `File` instead of `Uri`. Readability check updated to use `File.exists()` for thumbnail paths.
+
+---
+
 ## Ad-hoc: Video Recording via System Camera
 **Date:** 2026-03-19
 

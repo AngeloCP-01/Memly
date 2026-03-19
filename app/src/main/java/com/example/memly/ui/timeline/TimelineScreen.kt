@@ -660,7 +660,15 @@ private fun MemoryPagerCard(
         memoryWithDetails.mediaFiles
             .filter { it.mediaType != com.example.memly.data.local.entity.MediaType.AUDIO }
     }
-    val imageUris = remember(visualMediaFiles) { visualMediaFiles.map { it.mediaStoreUri } }
+    val imageUris = remember(visualMediaFiles) {
+        visualMediaFiles.map { media ->
+            if (media.mediaType == com.example.memly.data.local.entity.MediaType.VIDEO && media.thumbnailPath != null) {
+                media.thumbnailPath
+            } else {
+                media.mediaStoreUri
+            }
+        }
+    }
     val hasAudio = remember(memoryWithDetails.mediaFiles) {
         memoryWithDetails.mediaFiles.any { it.mediaType == com.example.memly.data.local.entity.MediaType.AUDIO }
     }
@@ -701,10 +709,16 @@ private fun MemoryPagerCard(
                 modifier = Modifier.fillMaxSize()
             ) { index ->
                 val uri = imageUris.getOrElse(index) { imageUris.first() }
-                val isVideo = visualMediaFiles.getOrNull(index)?.mediaType == com.example.memly.data.local.entity.MediaType.VIDEO
+                val mediaFile = visualMediaFiles.getOrNull(index)
+                val isVideo = mediaFile?.mediaType == com.example.memly.data.local.entity.MediaType.VIDEO
+                val imageModel: Any = if (isVideo && mediaFile?.thumbnailPath != null) {
+                    java.io.File(uri)
+                } else {
+                    Uri.parse(uri)
+                }
                 Box(modifier = Modifier.fillMaxSize()) {
                     AsyncImage(
-                        model = Uri.parse(uri),
+                        model = imageModel,
                         contentDescription = memory.title ?: "Memory",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop

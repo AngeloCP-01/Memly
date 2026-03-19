@@ -40,6 +40,7 @@
 | 8 | Fix: Edit media, collection UX, location fallback, add-to-collection from detail | COMPLETE |
 | 9 | Timeline pagination (10 items, lazy load) | COMPLETE |
 | 10 | Video recording via system camera (Photo/Video dialog) | COMPLETE |
+| 11 | Fix: Video thumbnails on timeline cards (use thumbnailPath for videos) | COMPLETE |
 
 ## Current Pointer
 

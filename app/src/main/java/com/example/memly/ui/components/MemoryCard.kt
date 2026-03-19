@@ -74,7 +74,11 @@ fun MemoryCard(
     val memory = memoryWithDetails.memory
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
     val visualMedia = memoryWithDetails.mediaFiles.firstOrNull { it.mediaType != MediaType.AUDIO }
-    val fullResUri = visualMedia?.mediaStoreUri
+    val fullResUri = if (visualMedia?.mediaType == MediaType.VIDEO && visualMedia.thumbnailPath != null) {
+        visualMedia.thumbnailPath
+    } else {
+        visualMedia?.mediaStoreUri
+    }
     val hasAudio = memoryWithDetails.mediaFiles.any { it.mediaType == MediaType.AUDIO }
     val hasVideo = visualMedia?.mediaType == MediaType.VIDEO
 
@@ -86,16 +90,22 @@ fun MemoryCard(
 
     val context = LocalContext.current
 
+    val isVideoThumbnail = visualMedia?.mediaType == MediaType.VIDEO && visualMedia.thumbnailPath != null
+
     // Check if the URI is actually readable (catches dead picker URIs, deleted files, etc.)
     var isUriReadable by remember(fullResUri) { mutableStateOf(true) } // optimistic default
     LaunchedEffect(fullResUri) {
         if (fullResUri != null) {
             isUriReadable = withContext(Dispatchers.IO) {
-                try {
-                    context.contentResolver.openInputStream(Uri.parse(fullResUri))
-                        ?.use { true } ?: false
-                } catch (_: Exception) {
-                    false
+                if (isVideoThumbnail) {
+                    java.io.File(fullResUri).exists()
+                } else {
+                    try {
+                        context.contentResolver.openInputStream(Uri.parse(fullResUri))
+                            ?.use { true } ?: false
+                    } catch (_: Exception) {
+                        false
+                    }
                 }
             }
         }
@@ -123,7 +133,7 @@ fun MemoryCard(
             ) {
                 if (isUriReadable) {
                     AsyncImage(
-                        model = Uri.parse(fullResUri),
+                        model = if (isVideoThumbnail) java.io.File(fullResUri) else Uri.parse(fullResUri),
                         contentDescription = memory.title ?: "Memory",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
