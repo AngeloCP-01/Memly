@@ -144,19 +144,25 @@ fun CaptureScreen(
         }
     }
 
+    // Camera video URI
+    var cameraVideoUri by remember { mutableStateOf<Uri?>(null) }
+    val videoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CaptureVideo()
+    ) { success ->
+        if (success && cameraVideoUri != null) {
+            viewModel.addCameraMedia(cameraVideoUri!!, MediaType.VIDEO)
+        }
+    }
+
+    // Camera mode dialog
+    var showCameraModeDialog by remember { mutableStateOf(false) }
+
     // Camera permission
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            val cacheDir = File(context.cacheDir, "camera")
-            if (!cacheDir.exists()) cacheDir.mkdirs()
-            val file = File(cacheDir, "photo_${System.currentTimeMillis()}.jpg")
-            val uri = androidx.core.content.FileProvider.getUriForFile(
-                context, "${context.packageName}.fileprovider", file
-            )
-            cameraPhotoUri = uri
-            cameraLauncher.launch(uri)
+            showCameraModeDialog = true
         } else {
             Toast.makeText(context, "Camera permission is required", Toast.LENGTH_SHORT).show()
         }
@@ -606,6 +612,45 @@ fun CaptureScreen(
                     }
                 }) {
                     Text("Keep original")
+                }
+            }
+        )
+    }
+
+    // Camera mode dialog (Photo vs Video)
+    if (showCameraModeDialog) {
+        AlertDialog(
+            onDismissRequest = { showCameraModeDialog = false },
+            title = { Text("Camera mode") },
+            text = { Text("What would you like to capture?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showCameraModeDialog = false
+                    val cacheDir = File(context.cacheDir, "camera")
+                    if (!cacheDir.exists()) cacheDir.mkdirs()
+                    val file = File(cacheDir, "photo_${System.currentTimeMillis()}.jpg")
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        context, "${context.packageName}.fileprovider", file
+                    )
+                    cameraPhotoUri = uri
+                    cameraLauncher.launch(uri)
+                }) {
+                    Text("Photo")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showCameraModeDialog = false
+                    val cacheDir = File(context.cacheDir, "camera")
+                    if (!cacheDir.exists()) cacheDir.mkdirs()
+                    val file = File(cacheDir, "video_${System.currentTimeMillis()}.mp4")
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        context, "${context.packageName}.fileprovider", file
+                    )
+                    cameraVideoUri = uri
+                    videoLauncher.launch(uri)
+                }) {
+                    Text("Video")
                 }
             }
         )

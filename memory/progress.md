@@ -39,6 +39,7 @@
 | 7 | Fix: TopAppBar double padding, collection dialog bug, rounded nav bar | COMPLETE |
 | 8 | Fix: Edit media, collection UX, location fallback, add-to-collection from detail | COMPLETE |
 | 9 | Timeline pagination (10 items, lazy load) | COMPLETE |
+| 10 | Video recording via system camera (Photo/Video dialog) | COMPLETE |
 
 ## Current Pointer
 

@@ -130,8 +130,8 @@ class CaptureViewModel @Inject constructor(
         _uiState.update { it.copy(mood = if (it.mood == mood) null else mood) }
     }
 
-    fun addCameraMedia(uri: Uri) {
-        val item = MediaItem(uri = uri, mediaType = MediaType.PHOTO, isFromCamera = true)
+    fun addCameraMedia(uri: Uri, mediaType: MediaType = MediaType.PHOTO) {
+        val item = MediaItem(uri = uri, mediaType = mediaType, isFromCamera = true)
         _uiState.update { it.copy(mediaItems = it.mediaItems + item) }
     }
 

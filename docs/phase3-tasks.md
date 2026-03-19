@@ -39,8 +39,8 @@ Section 7 is the final integration pass and depends on all prior sections.
 | 4       | Gamification -- Streaks & Scores | 8   | Medium     | Medium |
 | 5       | Map Heatmap                    | 6     | Medium     | Medium |
 | 6       | "On This Day" Enhancement      | 5     | Medium     | Medium |
-| 7       | Integration & Polish           | 5     | Medium     | Low    |
-|         | **Total**                      | **48**|            |        |
+| 7       | Integration & Polish           | 8     | Medium     | Low    |
+|         | **Total**                      | **51**|            |        |
 
 ---
 
@@ -204,5 +204,8 @@ Final pass to ensure all Phase 3 features work together, perform well, and are a
 | 7.3  | Performance test with large dataset (100+ memories) in charts and calendar | ⬜     | Seed database with bulk data; measure frame rate and load time |
 | 7.4  | Update navigation to include analytics entry point                         | ⬜     | Add bottom nav item or menu entry; ensure back navigation works |
 | 7.5  | Final build and smoke test on physical device                              | ⬜     | Verify all features on a real device with release build        |
+| 7.6  | Build custom CameraX in-app camera with photo/video toggle                 | ⬜     | Messenger-like UX: single camera screen with mode switch; replaces Photo/Video dialog (D082) |
+| 7.7  | Integrate CameraX camera into CaptureScreen and MemoryDetailScreen         | ⬜     | Camera button navigates to CameraX screen; result returned via savedStateHandle or nav args |
+| 7.8  | Verify: CameraX camera captures photos and videos, returns results correctly | ⬜   | Test photo capture, video recording, mode switching, back navigation |
 
-**Checkpoint:** All Phase 3 features are integrated, performant, and reachable from navigation. App is stable with a large memory collection. Ready for Phase 4.
+**Checkpoint:** All Phase 3 features are integrated, performant, and reachable from navigation. In-app camera supports photo/video toggle without system camera dialogs. App is stable with a large memory collection. Ready for Phase 4.

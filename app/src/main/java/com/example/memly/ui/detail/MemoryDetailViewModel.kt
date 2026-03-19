@@ -241,8 +241,8 @@ class MemoryDetailViewModel @Inject constructor(
         _uiState.update { it.copy(showImportChoiceDialog = false) }
     }
 
-    fun addCameraMedia(uri: Uri) {
-        val item = MediaItem(uri = uri, mediaType = MediaType.PHOTO, isFromCamera = true)
+    fun addCameraMedia(uri: Uri, mediaType: MediaType = MediaType.PHOTO) {
+        val item = MediaItem(uri = uri, mediaType = mediaType, isFromCamera = true)
         _uiState.update { it.copy(editNewMediaItems = it.editNewMediaItems + item) }
     }
 

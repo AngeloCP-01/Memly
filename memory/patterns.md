@@ -62,7 +62,9 @@
 - Media items tracked as `MediaItem(uri, mediaType, displayName)` in UiState
 - File operations (hash, copy, thumbnail) run on `Dispatchers.IO` via `withContext`
 - Repository's `createMemoryWithDetails()` wraps inserts in `database.withTransaction {}`
-- Camera capture uses `TakePicture` contract + `FileProvider` (not CameraX)
+- Camera capture uses `TakePicture` (photo) and `CaptureVideo` (video) contracts + `FileProvider` (not CameraX)
+- Camera button shows Photo/Video AlertDialog after permission grant; each option creates a temp file in `cacheDir/camera/` and launches the appropriate contract
+- Same dialog pattern used in both CaptureScreen and MemoryDetailScreen (edit mode)
 - Gallery uses `PickMultipleVisualMedia` contract
 - Location uses `FusedLocationProviderClient`: tries `lastLocation` first, falls back to `getCurrentLocation(BALANCED_POWER_ACCURACY)`
 - Duplicate media detected by SHA-256 hash before insert

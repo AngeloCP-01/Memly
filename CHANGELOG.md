@@ -4,6 +4,16 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Ad-hoc: Video Recording via System Camera
+**Date:** 2026-03-19
+
+### Added
+- **Video recording from camera button**: Camera button now shows a Photo/Video dialog. "Photo" launches `TakePicture` (existing), "Video" launches `CaptureVideo` (new). Both in CaptureScreen and MemoryDetailScreen edit mode.
+- `addCameraMedia()` in both ViewModels now accepts a `mediaType` parameter to correctly tag camera-recorded videos.
+- CameraX in-app camera with photo/video toggle added to Phase 3, Section 7 as tasks 7.6–7.8.
+
+---
+
 ## Ad-hoc: Timeline Pagination
 **Date:** 2026-03-19
 
