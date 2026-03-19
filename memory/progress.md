@@ -23,8 +23,9 @@
 | 3 | Enhanced Capture               | COMPLETE    |
 | 4 | Onboarding Flow                | NOT STARTED |
 | 5 | Theme & UI Polish              | COMPLETE    |
-| 6 | Data Management                | NOT STARTED |
-| 7 | Integration & Polish           | NOT STARTED |
+| 6 | Map Enhancement                | NOT STARTED |
+| 7 | Data Management                | NOT STARTED |
+| 8 | Integration & Polish           | NOT STARTED |
 
 ## Ad-hoc
 
