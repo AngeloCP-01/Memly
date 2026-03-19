@@ -78,6 +78,10 @@ dependencies {
     // Map (osmdroid)
     implementation(libs.osmdroid)
 
+    // Media3 (ExoPlayer)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

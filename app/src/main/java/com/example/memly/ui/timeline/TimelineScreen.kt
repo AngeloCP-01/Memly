@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.FilterList
@@ -644,11 +645,11 @@ private fun MemoryPagerCard(
     modifier: Modifier = Modifier
 ) {
     val memory = memoryWithDetails.memory
-    val imageUris = remember(memoryWithDetails.mediaFiles) {
+    val visualMediaFiles = remember(memoryWithDetails.mediaFiles) {
         memoryWithDetails.mediaFiles
             .filter { it.mediaType != com.example.memly.data.local.entity.MediaType.AUDIO }
-            .map { it.mediaStoreUri }
     }
+    val imageUris = remember(visualMediaFiles) { visualMediaFiles.map { it.mediaStoreUri } }
     val hasAudio = remember(memoryWithDetails.mediaFiles) {
         memoryWithDetails.mediaFiles.any { it.mediaType == com.example.memly.data.local.entity.MediaType.AUDIO }
     }
@@ -689,12 +690,28 @@ private fun MemoryPagerCard(
                 modifier = Modifier.fillMaxSize()
             ) { index ->
                 val uri = imageUris.getOrElse(index) { imageUris.first() }
-                AsyncImage(
-                    model = Uri.parse(uri),
-                    contentDescription = memory.title ?: "Memory",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                val isVideo = visualMediaFiles.getOrNull(index)?.mediaType == com.example.memly.data.local.entity.MediaType.VIDEO
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = Uri.parse(uri),
+                        contentDescription = memory.title ?: "Memory",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    if (isVideo) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.PlayCircle,
+                                contentDescription = "Video",
+                                tint = Color.White.copy(alpha = 0.7f),
+                                modifier = Modifier.size(48.dp)
+                            )
+                        }
+                    }
+                }
             }
         } else {
             Box(

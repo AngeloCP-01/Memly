@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -75,6 +76,7 @@ fun MemoryCard(
     val visualMedia = memoryWithDetails.mediaFiles.firstOrNull { it.mediaType != MediaType.AUDIO }
     val fullResUri = visualMedia?.mediaStoreUri
     val hasAudio = memoryWithDetails.mediaFiles.any { it.mediaType == MediaType.AUDIO }
+    val hasVideo = visualMedia?.mediaType == MediaType.VIDEO
 
     var isPressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
@@ -183,23 +185,45 @@ fun MemoryCard(
                     }
                 }
 
-                // Audio indicator — top left
-                if (hasAudio) {
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.5f),
-                        shape = CircleShape,
+                // Media type indicators — top left
+                if (hasVideo || hasAudio) {
+                    Row(
                         modifier = Modifier
                             .padding(12.dp)
-                            .align(Alignment.TopStart)
-                            .size(28.dp)
+                            .align(Alignment.TopStart),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                Icons.Default.Mic,
-                                contentDescription = "Has voice memo",
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
+                        if (hasVideo) {
+                            Surface(
+                                color = Color.Black.copy(alpha = 0.5f),
+                                shape = CircleShape,
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.PlayCircle,
+                                        contentDescription = "Has video",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
+                        if (hasAudio) {
+                            Surface(
+                                color = Color.Black.copy(alpha = 0.5f),
+                                shape = CircleShape,
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.Mic,
+                                        contentDescription = "Has voice memo",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -418,7 +442,9 @@ fun MemoryCarouselCard(
 ) {
     val memory = memoryWithDetails.memory
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
-    val thumbnail = memoryWithDetails.mediaFiles.firstOrNull { it.mediaType != MediaType.AUDIO }?.thumbnailPath
+    val firstVisualMedia = memoryWithDetails.mediaFiles.firstOrNull { it.mediaType != MediaType.AUDIO }
+    val thumbnail = firstVisualMedia?.thumbnailPath
+    val isVideo = firstVisualMedia?.mediaType == MediaType.VIDEO
 
     Box(
         modifier = modifier
@@ -440,6 +466,27 @@ fun MemoryCarouselCard(
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             )
+        }
+
+        // Video indicator — top right
+        if (isVideo) {
+            Surface(
+                color = Color.Black.copy(alpha = 0.5f),
+                shape = CircleShape,
+                modifier = Modifier
+                    .padding(8.dp)
+                    .align(Alignment.TopEnd)
+                    .size(24.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.PlayCircle,
+                        contentDescription = "Video",
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
         }
 
         // Gradient overlay
@@ -507,8 +554,10 @@ fun MemorySearchResultCard(
 ) {
     val memory = memoryWithDetails.memory
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
-    val thumbnail = memoryWithDetails.mediaFiles.firstOrNull { it.mediaType != MediaType.AUDIO }?.thumbnailPath
+    val firstVisual = memoryWithDetails.mediaFiles.firstOrNull { it.mediaType != MediaType.AUDIO }
+    val thumbnail = firstVisual?.thumbnailPath
     val hasAudio = memoryWithDetails.mediaFiles.any { it.mediaType == MediaType.AUDIO }
+    val isVideo = firstVisual?.mediaType == MediaType.VIDEO
 
     Surface(
         shape = RoundedCornerShape(12.dp),
@@ -535,6 +584,19 @@ fun MemorySearchResultCard(
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
+                    if (isVideo) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.PlayCircle,
+                                contentDescription = "Video",
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
                 } else if (hasAudio) {
                     // Audio-only: show mic icon
                     Box(

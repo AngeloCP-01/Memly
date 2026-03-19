@@ -79,6 +79,7 @@ import com.example.memly.data.local.entity.MemoryEntity
 import com.example.memly.data.local.entity.Mood
 import com.example.memly.data.local.entity.TagEntity
 import com.example.memly.ui.components.AudioPlaybackBar
+import com.example.memly.ui.components.VideoPlayer
 import com.example.memly.ui.theme.color
 import android.Manifest
 import android.net.Uri
@@ -505,6 +506,11 @@ private fun PhotoHeroSection(
                             }
                         }
                     }
+                } else if (mediaFile.mediaType == MediaType.VIDEO) {
+                    VideoPlayer(
+                        videoUri = Uri.parse(mediaFile.mediaStoreUri),
+                        modifier = Modifier.fillMaxSize()
+                    )
                 } else {
                     AsyncImage(
                         model = Uri.parse(mediaFile.mediaStoreUri),
