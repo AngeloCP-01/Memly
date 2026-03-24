@@ -4,6 +4,18 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Ad-hoc: Edit Screen Parity + Map Defaults + Place Picker Zoom Controls
+**Date:** 2026-03-24
+
+### Changed
+- **MemoryDetailScreen (edit mode)**: Added Location section (Get Location + Pick on Map buttons), Date picker, matching CaptureScreen's add form. Media grid replaced from horizontal LazyRow to 3-column grid with order badges, video play icons, and undo-remove chips — matching CaptureScreen's MediaPreviewGrid. Gallery/Camera action buttons now use PhotoLibrary/CameraAlt icons.
+- **MemoryDetailScreen (buttons)**: Edit/Save FAB removed from media hero area; replaced with full-width "Edit Memory" / "Save Memory" buttons inside the bottom sheet content.
+- **MemoryDetailViewModel**: Added `editDate`, `editLatitude`, `editLongitude`, `isLocationLoading` to `DetailUiState`. Added `updateEditLocation()`, `clearEditLocation()`, `setLocationLoading()`, `updateEditDate()` methods. `saveEdits()` now persists latitude, longitude, and memoryDate.
+- **MapScreen**: Default center changed from (0, 0) to Philippines (12.8797, 121.7740) at zoom 6.
+- **PlacePickerDialog**: Default center updated to Philippines (12.8797, 121.7740) at zoom 6. Built-in osmdroid zoom buttons hidden; replaced with custom Zoom In (+) / Zoom Out (-) SmallFABs stacked above My Location button to avoid overlap with confirm button.
+
+---
+
 ## Ad-hoc: Collection Detail Grid + Memory Detail Bottom Sheet Redesign
 **Date:** 2026-03-24
 

@@ -47,6 +47,10 @@ data class DetailUiState(
     val editNotes: String = "",
     val editMood: Mood? = null,
     val editPlaceLabel: String = "",
+    val editLatitude: Double? = null,
+    val editLongitude: Double? = null,
+    val editDate: Long = System.currentTimeMillis(),
+    val isLocationLoading: Boolean = false,
     val editTags: List<String> = emptyList(),
     val editTagInput: String = "",
     // Edit media
@@ -149,6 +153,9 @@ class MemoryDetailViewModel @Inject constructor(
                 editNotes = memory.notes ?: "",
                 editMood = memory.mood,
                 editPlaceLabel = memory.placeLabel ?: "",
+                editLatitude = memory.latitude,
+                editLongitude = memory.longitude,
+                editDate = memory.memoryDate,
                 editTags = state.tags.map { tag -> tag.name },
                 editTagInput = "",
                 editRemovedMediaIds = emptySet(),
@@ -198,6 +205,28 @@ class MemoryDetailViewModel @Inject constructor(
 
     fun removeEditTag(tag: String) {
         _uiState.update { it.copy(editTags = it.editTags - tag) }
+    }
+
+    // --- Location editing methods ---
+
+    fun updateEditLocation(latitude: Double, longitude: Double) {
+        _uiState.update {
+            it.copy(editLatitude = latitude, editLongitude = longitude, isLocationLoading = false)
+        }
+    }
+
+    fun setLocationLoading(loading: Boolean) {
+        _uiState.update { it.copy(isLocationLoading = loading) }
+    }
+
+    fun clearEditLocation() {
+        _uiState.update { it.copy(editLatitude = null, editLongitude = null, editPlaceLabel = "") }
+    }
+
+    // --- Date editing methods ---
+
+    fun updateEditDate(date: Long) {
+        _uiState.update { it.copy(editDate = date) }
     }
 
     // --- Media editing methods ---
@@ -379,7 +408,10 @@ class MemoryDetailViewModel @Inject constructor(
                     title = state.editTitle.ifBlank { null },
                     notes = state.editNotes.ifBlank { null },
                     mood = state.editMood,
-                    placeLabel = state.editPlaceLabel.ifBlank { null }
+                    placeLabel = state.editPlaceLabel.ifBlank { null },
+                    latitude = state.editLatitude,
+                    longitude = state.editLongitude,
+                    memoryDate = state.editDate
                 )
                 memoryRepository.updateMemory(updatedMemory)
 

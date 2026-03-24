@@ -45,8 +45,9 @@
 | 12 | Map preview: square callout card above marker, place picker overlay layout, auto-detect location | COMPLETE |
 | 13 | Custom MemlyToast replaces all Snackbars (centered overlay, fade+scale animation) | COMPLETE |
 | 14 | Collection detail grid + Memory detail bottom sheet redesign | COMPLETE |
+| 15 | Edit screen parity + map defaults + place picker zoom controls | COMPLETE |
 
 ## Current Pointer
 
-- **Last completed:** Ad-hoc #14 -- Collection Detail Grid + Memory Detail Bottom Sheet Redesign (2026-03-24)
+- **Last completed:** Ad-hoc #15 -- Edit screen parity, map Philippines default, place picker zoom (2026-03-24)
 - **Next:** Phase 2, Section 6 -- Map Enhancement

@@ -25,9 +25,11 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -271,9 +273,9 @@ fun PlacePickerDialog(
                     .fillMaxSize()
                     .padding(padding)
             ) {
-                val defaultLat = initialLatitude ?: 14.5995
-                val defaultLng = initialLongitude ?: 120.9842
-                val defaultZoom = if (initialLatitude != null) 15.0 else 5.0
+                val defaultLat = initialLatitude ?: 12.8797
+                val defaultLng = initialLongitude ?: 121.7740
+                val defaultZoom = if (initialLatitude != null) 15.0 else 6.0
 
                 // Map fills the entire area
                 AndroidView(
@@ -281,6 +283,7 @@ fun PlacePickerDialog(
                         MapView(ctx).apply {
                             setTileSource(TileSourceFactory.MAPNIK)
                             setMultiTouchControls(true)
+                            zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
                             controller.setZoom(defaultZoom)
                             controller.setCenter(GeoPoint(defaultLat, defaultLng))
 
@@ -413,37 +416,61 @@ fun PlacePickerDialog(
                     }
                 }
 
-                // My Location button
-                @Suppress("MissingPermission")
-                androidx.compose.material3.SmallFloatingActionButton(
-                    onClick = {
-                        val hasPerm = ContextCompat.checkSelfPermission(
-                            context, Manifest.permission.ACCESS_FINE_LOCATION
-                        ) == PackageManager.PERMISSION_GRANTED ||
-                            ContextCompat.checkSelfPermission(
-                                context, Manifest.permission.ACCESS_COARSE_LOCATION
-                            ) == PackageManager.PERMISSION_GRANTED
-                        if (!hasPerm) return@SmallFloatingActionButton
-                        isDetectingLocation = true
-                        val client = LocationServices.getFusedLocationProviderClient(context)
-                        client.lastLocation.addOnSuccessListener { loc ->
-                            if (loc != null) {
-                                mapViewRef?.controller?.animateTo(GeoPoint(loc.latitude, loc.longitude))
-                                mapViewRef?.controller?.setZoom(16.0)
-                            }
-                            isDetectingLocation = false
-                        }.addOnFailureListener { isDetectingLocation = false }
-                    },
+                // Zoom + My Location buttons (stacked bottom-end)
+                Column(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(end = 16.dp, bottom = 130.dp),
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    if (isDetectingLocation) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        Icon(Icons.Default.MyLocation, contentDescription = "My location")
+                    // Zoom in
+                    androidx.compose.material3.SmallFloatingActionButton(
+                        onClick = { mapViewRef?.controller?.zoomIn() },
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Zoom in")
+                    }
+
+                    // Zoom out
+                    androidx.compose.material3.SmallFloatingActionButton(
+                        onClick = { mapViewRef?.controller?.zoomOut() },
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ) {
+                        Icon(Icons.Default.Remove, contentDescription = "Zoom out")
+                    }
+
+                    // My Location
+                    @Suppress("MissingPermission")
+                    androidx.compose.material3.SmallFloatingActionButton(
+                        onClick = {
+                            val hasPerm = ContextCompat.checkSelfPermission(
+                                context, Manifest.permission.ACCESS_FINE_LOCATION
+                            ) == PackageManager.PERMISSION_GRANTED ||
+                                ContextCompat.checkSelfPermission(
+                                    context, Manifest.permission.ACCESS_COARSE_LOCATION
+                                ) == PackageManager.PERMISSION_GRANTED
+                            if (!hasPerm) return@SmallFloatingActionButton
+                            isDetectingLocation = true
+                            val client = LocationServices.getFusedLocationProviderClient(context)
+                            client.lastLocation.addOnSuccessListener { loc ->
+                                if (loc != null) {
+                                    mapViewRef?.controller?.animateTo(GeoPoint(loc.latitude, loc.longitude))
+                                    mapViewRef?.controller?.setZoom(16.0)
+                                }
+                                isDetectingLocation = false
+                            }.addOnFailureListener { isDetectingLocation = false }
+                        },
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ) {
+                        if (isDetectingLocation) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.MyLocation, contentDescription = "My location")
+                        }
                     }
                 }
 

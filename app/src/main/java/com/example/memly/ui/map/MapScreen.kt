@@ -164,8 +164,8 @@ private fun OsmdroidMapView(
         MapView(context).apply {
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
-            controller.setZoom(5.0)
-            controller.setCenter(GeoPoint(0.0, 0.0))
+            controller.setZoom(6.0)
+            controller.setCenter(GeoPoint(12.8797, 121.7740))
         }
     }
 

@@ -31,23 +31,35 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CollectionsBookmark
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -82,6 +94,7 @@ import com.example.memly.data.local.entity.Mood
 import com.example.memly.data.local.entity.TagEntity
 import com.example.memly.ui.components.AudioPlaybackBar
 import com.example.memly.ui.components.MemlyToast
+import com.example.memly.ui.components.PlacePickerDialog
 import com.example.memly.ui.components.VideoPlayer
 import com.example.memly.ui.theme.color
 import android.Manifest
@@ -92,10 +105,12 @@ import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.ui.platform.LocalContext
 import com.example.memly.ui.capture.MediaItem
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -149,6 +164,24 @@ fun MemoryDetailScreen(
 
     // Camera mode dialog for edit mode
     var showEditCameraModeDialog by remember { mutableStateOf(false) }
+
+    // Place picker and date picker for edit mode
+    var showEditPlacePicker by remember { mutableStateOf(false) }
+    var showEditDatePicker by remember { mutableStateOf(false) }
+
+    // Location permission for edit mode
+    val editLocationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (fineGranted || coarseGranted) {
+            fetchEditLocation(context, viewModel)
+        } else {
+            Toast.makeText(context, "Location permission is required", Toast.LENGTH_SHORT).show()
+            viewModel.setLocationLoading(false)
+        }
+    }
 
     val editCameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -279,8 +312,45 @@ fun MemoryDetailScreen(
                                 },
                                 onTakePhoto = {
                                     editCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                                }
+                                },
+                                onGetLocation = {
+                                    viewModel.setLocationLoading(true)
+                                    editLocationPermissionLauncher.launch(
+                                        arrayOf(
+                                            Manifest.permission.ACCESS_FINE_LOCATION,
+                                            Manifest.permission.ACCESS_COARSE_LOCATION
+                                        )
+                                    )
+                                },
+                                onPickOnMap = { showEditPlacePicker = true },
+                                onShowDatePicker = { showEditDatePicker = true }
                             )
+
+                            // Save button
+                            Button(
+                                onClick = { viewModel.saveEdits() },
+                                enabled = !state.isSaving,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = fabColor,
+                                    contentColor = fabContentColor
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                if (state.isSaving) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        color = fabContentColor,
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Saving...")
+                                } else {
+                                    Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Save Memory")
+                                }
+                            }
                         } else {
                             ReadModeContent(
                                 memory = memory,
@@ -295,6 +365,21 @@ fun MemoryDetailScreen(
                                         .forEach { viewModel.importToMemly(it) }
                                 }
                             )
+
+                            // Edit button
+                            Button(
+                                onClick = { viewModel.startEditing() },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = fabColor,
+                                    contentColor = fabContentColor
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Edit Memory")
+                            }
                         }
                     }
                 },
@@ -364,36 +449,7 @@ fun MemoryDetailScreen(
                         }
                     }
 
-                    // FAB
-                    if (!state.isEditing) {
-                        FloatingActionButton(
-                            onClick = { viewModel.startEditing() },
-                            containerColor = fabColor,
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(end = 16.dp, bottom = 172.dp)
-                        ) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = fabContentColor)
-                        }
-                    } else {
-                        FloatingActionButton(
-                            onClick = { viewModel.saveEdits() },
-                            containerColor = fabColor,
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(end = 16.dp, bottom = 172.dp)
-                        ) {
-                            if (state.isSaving) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    color = fabContentColor,
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Icon(Icons.Default.Save, contentDescription = "Save", tint = fabContentColor)
-                            }
-                        }
-                    }
+                    // (Edit/Save button moved into bottom sheet)
 
                     MemlyToast(
                         message = toastMessage,
@@ -522,6 +578,46 @@ fun MemoryDetailScreen(
                     Text("Video")
                 }
             }
+        )
+    }
+
+    // Date picker dialog for edit mode
+    if (showEditDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = state.editDate)
+        DatePickerDialog(
+            onDismissRequest = { showEditDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { viewModel.updateEditDate(it) }
+                    showEditDatePicker = false
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    // Place picker dialog for edit mode
+    if (showEditPlacePicker) {
+        PlacePickerDialog(
+            initialLatitude = state.editLatitude,
+            initialLongitude = state.editLongitude,
+            onPlaceSelected = { lat, lng, placeName ->
+                viewModel.updateEditLocation(lat, lng)
+                if (!placeName.isNullOrBlank()) {
+                    val shortName = placeName.split(",").firstOrNull()?.trim() ?: placeName
+                    viewModel.updateEditPlaceLabel(shortName)
+                }
+                showEditPlacePicker = false
+            },
+            onDismiss = { showEditPlacePicker = false }
         )
     }
 }
@@ -915,137 +1011,212 @@ private fun EditModeContent(
     state: DetailUiState,
     viewModel: MemoryDetailViewModel,
     onPickFromGallery: () -> Unit,
-    onTakePhoto: () -> Unit
+    onTakePhoto: () -> Unit,
+    onGetLocation: () -> Unit,
+    onPickOnMap: () -> Unit,
+    onShowDatePicker: () -> Unit
 ) {
     // Media editing section
-    Text("Photos & Videos", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+    Text("Photos & Videos", style = MaterialTheme.typography.titleMedium)
 
-    val existingVisual = state.mediaFiles.filter { it.mediaType != MediaType.AUDIO }
+    val existingVisual = state.mediaFiles.filter { it.mediaType != MediaType.AUDIO && it.id !in state.editRemovedMediaIds }
+    val removedVisual = state.mediaFiles.filter { it.mediaType != MediaType.AUDIO && it.id in state.editRemovedMediaIds }
     val newVisual = state.editNewMediaItems.filter { it.mediaType != MediaType.AUDIO }
 
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // Existing media with remove overlay
-        itemsIndexed(existingVisual) { _, mediaFile ->
-            val isMarkedForRemoval = mediaFile.id in state.editRemovedMediaIds
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .border(
-                        width = if (isMarkedForRemoval) 2.dp else 1.dp,
-                        color = if (isMarkedForRemoval) MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.outline,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-            ) {
-                AsyncImage(
-                    model = Uri.parse(mediaFile.mediaStoreUri),
-                    contentDescription = "Media",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    alpha = if (isMarkedForRemoval) 0.3f else 1f
-                )
-                if (isMarkedForRemoval) {
-                    // Undo removal
-                    Surface(
-                        modifier = Modifier.align(Alignment.Center),
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                    ) {
-                        TextButton(onClick = { viewModel.unmarkMediaForRemoval(mediaFile.id) }) {
-                            Text("Undo", style = MaterialTheme.typography.labelSmall)
+    // 3-column grid matching CaptureScreen style
+    if (existingVisual.isNotEmpty() || newVisual.isNotEmpty()) {
+        val columns = 3
+        val totalItems = existingVisual.size + newVisual.size
+        val rows = (totalItems + columns - 1) / columns
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (row in 0 until rows) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    for (col in 0 until columns) {
+                        val index = row * columns + col
+                        if (index < totalItems) {
+                            val isExisting = index < existingVisual.size
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .border(
+                                        1.dp,
+                                        if (isExisting) MaterialTheme.colorScheme.outline
+                                        else MaterialTheme.colorScheme.primary,
+                                        RoundedCornerShape(12.dp)
+                                    )
+                            ) {
+                                if (isExisting) {
+                                    val mediaFile = existingVisual[index]
+                                    AsyncImage(
+                                        model = Uri.parse(mediaFile.mediaStoreUri),
+                                        contentDescription = "Media ${index + 1}",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    // Video play icon
+                                    if (mediaFile.mediaType == MediaType.VIDEO) {
+                                        Icon(
+                                            Icons.Default.PlayCircle,
+                                            contentDescription = "Video",
+                                            modifier = Modifier.align(Alignment.Center).size(32.dp),
+                                            tint = Color.White.copy(alpha = 0.8f)
+                                        )
+                                    }
+                                    // Order badge
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomStart)
+                                            .padding(4.dp)
+                                            .size(20.dp)
+                                            .background(
+                                                MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                                                CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("${index + 1}", style = MaterialTheme.typography.labelSmall)
+                                    }
+                                    // Remove button
+                                    IconButton(
+                                        onClick = { viewModel.markMediaForRemoval(mediaFile.id) },
+                                        modifier = Modifier.align(Alignment.TopEnd).size(24.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Remove",
+                                            modifier = Modifier
+                                                .size(18.dp)
+                                                .background(
+                                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                                                    CircleShape
+                                                ),
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                } else {
+                                    val newIndex = index - existingVisual.size
+                                    val item = newVisual[newIndex]
+                                    val actualIndex = state.editNewMediaItems.indexOf(item)
+                                    AsyncImage(
+                                        model = item.uri,
+                                        contentDescription = "New media ${index + 1}",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    // Video play icon
+                                    if (item.mediaType == MediaType.VIDEO) {
+                                        Icon(
+                                            Icons.Default.PlayCircle,
+                                            contentDescription = "Video",
+                                            modifier = Modifier.align(Alignment.Center).size(32.dp),
+                                            tint = Color.White.copy(alpha = 0.8f)
+                                        )
+                                    }
+                                    // Order badge
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomStart)
+                                            .padding(4.dp)
+                                            .size(20.dp)
+                                            .background(
+                                                MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                                                CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("${index + 1}", style = MaterialTheme.typography.labelSmall)
+                                    }
+                                    // Remove button
+                                    IconButton(
+                                        onClick = { viewModel.removeNewMedia(actualIndex) },
+                                        modifier = Modifier.align(Alignment.TopEnd).size(24.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Remove",
+                                            modifier = Modifier
+                                                .size(18.dp)
+                                                .background(
+                                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                                                    CircleShape
+                                                ),
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
-                } else {
-                    // Remove button
-                    IconButton(
-                        onClick = { viewModel.markMediaForRemoval(mediaFile.id) },
-                        modifier = Modifier.align(Alignment.TopEnd).size(24.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "Remove",
-                            tint = MaterialTheme.colorScheme.error
-                        )
+                }
+            }
+        }
+    }
+
+    // Removed media with undo
+    if (removedVisual.isNotEmpty()) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            removedVisual.forEach { mediaFile ->
+                AssistChip(
+                    onClick = { viewModel.unmarkMediaForRemoval(mediaFile.id) },
+                    label = { Text("Undo remove") },
+                    leadingIcon = {
+                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize))
                     }
-                }
+                )
             }
         }
+    }
 
-        // New media items
-        itemsIndexed(newVisual) { _, item ->
-            val actualIndex = state.editNewMediaItems.indexOf(item)
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
-            ) {
-                AsyncImage(
-                    model = item.uri,
-                    contentDescription = "New media",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                IconButton(
-                    onClick = { viewModel.removeNewMedia(actualIndex) },
-                    modifier = Modifier.align(Alignment.TopEnd).size(24.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Remove",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
+    // Action buttons row (matching CaptureScreen style)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .size(100.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+                .clickable(onClick = onPickFromGallery)
+                .padding(8.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                Icons.Default.PhotoLibrary,
+                contentDescription = "Gallery",
+                modifier = Modifier.size(32.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(4.dp))
+            Text("Gallery", style = MaterialTheme.typography.labelSmall)
         }
-
-        // Gallery button
-        item {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
-                    .clickable(onClick = onPickFromGallery)
-                    .padding(8.dp),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Add from gallery",
-                    modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.height(4.dp))
-                Text("Gallery", style = MaterialTheme.typography.labelSmall)
-            }
-        }
-
-        // Camera button
-        item {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
-                    .clickable(onClick = onTakePhoto)
-                    .padding(8.dp),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Take photo",
-                    modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.height(4.dp))
-                Text("Camera", style = MaterialTheme.typography.labelSmall)
-            }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .size(100.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+                .clickable(onClick = onTakePhoto)
+                .padding(8.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                Icons.Default.CameraAlt,
+                contentDescription = "Camera",
+                modifier = Modifier.size(32.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(4.dp))
+            Text("Camera", style = MaterialTheme.typography.labelSmall)
         }
     }
 
@@ -1094,11 +1265,48 @@ private fun EditModeContent(
         }
     }
 
+    // === LOCATION ===
+    Text("Location", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        AssistChip(
+            onClick = onGetLocation,
+            label = {
+                if (state.isLocationLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else if (state.editLatitude != null) {
+                    Text("\uD83D\uDCCD ${String.format(java.util.Locale.ROOT, "%.4f, %.4f", state.editLatitude, state.editLongitude)}")
+                } else {
+                    Text("Get Location")
+                }
+            },
+            leadingIcon = {
+                if (!state.isLocationLoading && state.editLatitude == null) {
+                    Icon(Icons.Default.MyLocation, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize))
+                }
+            }
+        )
+        AssistChip(
+            onClick = onPickOnMap,
+            label = { Text("Pick on Map") },
+            leadingIcon = {
+                Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize))
+            }
+        )
+        if (state.editLatitude != null) {
+            IconButton(onClick = { viewModel.clearEditLocation() }, modifier = Modifier.size(24.dp)) {
+                Icon(Icons.Default.Close, contentDescription = "Clear location")
+            }
+        }
+    }
+
     // Place label
     OutlinedTextField(
         value = state.editPlaceLabel,
         onValueChange = viewModel::updateEditPlaceLabel,
-        label = { Text("Place name") },
+        label = { Text("Place name (optional)") },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
         leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
@@ -1108,7 +1316,7 @@ private fun EditModeContent(
         )
     )
 
-    // Tags
+    // === TAGS ===
     Text("Tags", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
     if (state.editTags.isNotEmpty()) {
         FlowRow(
@@ -1142,4 +1350,42 @@ private fun EditModeContent(
             }
         }
     )
+
+    // === DATE PICKER ===
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
+    Text("Date", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+    AssistChip(
+        onClick = onShowDatePicker,
+        label = { Text(dateFormat.format(Date(state.editDate))) },
+        leadingIcon = {
+            Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize))
+        }
+    )
+}
+
+@Suppress("MissingPermission")
+private fun fetchEditLocation(context: android.content.Context, viewModel: MemoryDetailViewModel) {
+    val client = LocationServices.getFusedLocationProviderClient(context)
+    client.lastLocation
+        .addOnSuccessListener { lastLocation ->
+            if (lastLocation != null) {
+                viewModel.updateEditLocation(lastLocation.latitude, lastLocation.longitude)
+            } else {
+                val cancellation = CancellationTokenSource()
+                client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cancellation.token)
+                    .addOnSuccessListener { location ->
+                        if (location != null) {
+                            viewModel.updateEditLocation(location.latitude, location.longitude)
+                        } else {
+                            viewModel.setLocationLoading(false)
+                        }
+                    }
+                    .addOnFailureListener {
+                        viewModel.setLocationLoading(false)
+                    }
+            }
+        }
+        .addOnFailureListener {
+            viewModel.setLocationLoading(false)
+        }
 }
