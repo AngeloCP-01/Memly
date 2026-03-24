@@ -157,7 +157,10 @@
 - `processMediaItem()` logic duplicated from CaptureViewModel into MemoryDetailViewModel (same hash/dedup/import flow)
 - Tag changes computed as diff: remove old tags not in new set, add new tags not in old set
 - Delete uses Room FK cascade (no manual cleanup of media/tags needed)
-- Photo hero uses `HorizontalPager` with page indicator dots
+- **Layout:** `BottomSheetScaffold` with full-screen media carousel behind a draggable bottom sheet
+- **Media carousel:** `HorizontalPager` with `contentPadding(horizontal = 24.dp)` + `pageSpacing(12.dp)` for card gaps; rounded corners (20dp) via `clip`; `ContentScale.FillWidth` preserves aspect ratio without cropping
+- **Bottom sheet:** peek height 160dp shows title/date/mood; drag up for full details; auto-expands in edit mode
+- **Mood theming:** card bg = `lerp(surface, moodColor, 0.08f)` (opaque tint); FAB, chips, tags, location pill all use mood accent color; page indicator dots use mood color
 - Back button overlaid as semi-transparent circle on image
 
 ## Map Screen
@@ -194,6 +197,7 @@
 - Collection cards use `RoundedCornerShape(20.dp)`, `surfaceContainerHigh` color, icon in `primaryContainer` circle
 - `CollectionListViewModel` uses `flatMapLatest` + `combine` to merge collection list with per-collection memory counts
 - `CollectionDetailViewModel` loads via `SavedStateHandle["collectionId"]`
+- **Collection detail:** 2-column `LazyVerticalGrid` with `StackedPhotoCard` composable — up to 3 photos stacked at random slight rotations (polaroid style), white borders, shadow depth, title/date/location below
 - Add-to-collection flow available from both `MemoryDetailScreen` (toggle dialog) and `CollectionDetailScreen` (FAB + bulk toggle dialog)
 - `MemoryDetailViewModel` injects both `MemoryRepository` and `CollectionRepository`
 - `CollectionDetailViewModel` injects both `CollectionRepository` and `MemoryRepository` (for add-memory dialog)

@@ -4,6 +4,17 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Ad-hoc: Collection Detail Grid + Memory Detail Bottom Sheet Redesign
+**Date:** 2026-03-24
+
+### Changed
+- **CollectionDetailScreen**: Replaced vertical list with 2-column grid (`LazyVerticalGrid`) using `StackedPhotoCard` composable — up to 3 photos stacked at random slight angles (polaroid style) with white borders, shadows, and title/date/location below.
+- **MemoryDetailScreen**: Complete redesign from `Scaffold` to `BottomSheetScaffold`. Media fills the full screen as a carousel (`HorizontalPager` with `contentPadding` and `pageSpacing` for card gaps). Details live in a draggable bottom sheet (peek 160dp, drag up for full details). Auto-expands in edit mode.
+- **Mood-based theming**: Detail screen FAB, chips, tags, location pill, and sheet background all derive from the memory's mood color. Sheet background uses `lerp(surface, moodColor, 0.08f)` for opaque tinted color.
+- **Image display**: `ContentScale.FillWidth` with `clip(RoundedCornerShape(20.dp))` — landscape images display in full without cropping, with visible rounded corners.
+
+---
+
 ## Ad-hoc: Custom MemlyToast (replaces Snackbar)
 **Date:** 2026-03-19
 

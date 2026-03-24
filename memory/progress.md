@@ -44,8 +44,9 @@
 | 11 | Fix: Video thumbnails on timeline cards (use thumbnailPath for videos) | COMPLETE |
 | 12 | Map preview: square callout card above marker, place picker overlay layout, auto-detect location | COMPLETE |
 | 13 | Custom MemlyToast replaces all Snackbars (centered overlay, fade+scale animation) | COMPLETE |
+| 14 | Collection detail grid + Memory detail bottom sheet redesign | COMPLETE |
 
 ## Current Pointer
 
-- **Last completed:** Ad-hoc #13 -- Custom MemlyToast (2026-03-19)
+- **Last completed:** Ad-hoc #14 -- Collection Detail Grid + Memory Detail Bottom Sheet Redesign (2026-03-24)
 - **Next:** Phase 2, Section 6 -- Map Enhancement

@@ -7,9 +7,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,10 +47,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,6 +63,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -181,95 +185,88 @@ fun MemoryDetailScreen(
         }
     }
 
-    Scaffold(
-        floatingActionButton = {
-            if (!state.isLoading && state.memory != null) {
-                if (state.isEditing) {
-                    FloatingActionButton(
-                        onClick = { viewModel.saveEdits() },
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ) {
-                        if (state.isSaving) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Icon(Icons.Default.Save, contentDescription = "Save")
-                        }
-                    }
-                } else {
-                    FloatingActionButton(
-                        onClick = { viewModel.startEditing() },
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit")
-                    }
-                }
+    // Derive mood-based colors
+    val moodColor = state.memory?.mood?.color()
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val cardBgColor = if (moodColor != null) {
+        // Blend mood tint over opaque surface
+        androidx.compose.ui.graphics.lerp(surfaceColor, moodColor, 0.08f)
+    } else {
+        surfaceColor
+    }
+    val fabColor = moodColor ?: MaterialTheme.colorScheme.primary
+    val fabContentColor = if (fabColor.luminance() > 0.5f) Color.Black else Color.White
+
+    val sheetState = rememberStandardBottomSheetState(
+        initialValue = SheetValue.PartiallyExpanded,
+        skipHiddenState = true
+    )
+    val scaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = sheetState)
+
+    // Auto-expand sheet when entering edit mode
+    LaunchedEffect(state.isEditing) {
+        if (state.isEditing) {
+            sheetState.expand()
+        }
+    }
+
+    when {
+        state.isLoading -> {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
         }
-    ) { padding ->
-        Box(modifier = Modifier.fillMaxSize()) {
-        when {
-            state.isLoading -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+        state.memory == null -> {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Memory not found", style = MaterialTheme.typography.bodyLarge)
             }
-            state.memory == null -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Memory not found", style = MaterialTheme.typography.bodyLarge)
-                }
-            }
-            else -> {
-                val memory = state.memory ?: return@Scaffold
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    // Photo hero section (visual media only)
-                    val visualMedia = state.mediaFiles.filter { it.mediaType != MediaType.AUDIO }
-                    val audioMedia = state.mediaFiles.filter { it.mediaType == MediaType.AUDIO }
+        }
+        else -> {
+            val memory = state.memory!!
+            val visualMedia = state.mediaFiles.filter { it.mediaType != MediaType.AUDIO }
+            val audioMedia = state.mediaFiles.filter { it.mediaType == MediaType.AUDIO }
+            val moodBgColor = memory.mood?.color()?.copy(alpha = 0.15f)
+                ?: MaterialTheme.colorScheme.surfaceVariant
 
-                    PhotoHeroSection(
-                        mediaFiles = visualMedia,
-                        mood = memory.mood,
-                        onBackClick = {
-                            if (state.isEditing) viewModel.cancelEditing()
-                            else onNavigateBack()
-                        },
-                        onDeleteClick = { showDeleteDialog = true },
-                        isEditing = state.isEditing,
-                        brokenMediaIds = state.brokenMediaIds,
-                        onImportToMemly = { viewModel.importToMemly(it) },
-                        onRemoveBroken = { viewModel.removeBrokenReference(it) }
+            BottomSheetScaffold(
+                scaffoldState = scaffoldState,
+                sheetPeekHeight = 160.dp,
+                sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                sheetContainerColor = cardBgColor,
+                sheetDragHandle = {
+                    // Drag handle pill
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 12.dp, bottom = 4.dp)
+                            .size(width = 40.dp, height = 4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(
+                                moodColor?.copy(alpha = 0.3f)
+                                    ?: MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                            )
                     )
-
-                    // Audio playback section
-                    if (audioMedia.isNotEmpty()) {
-                        Column(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            audioMedia.forEach { audio ->
-                                AudioPlaybackBar(
-                                    audioUri = Uri.parse(audio.mediaStoreUri),
-                                    durationMs = audio.durationMs
-                                )
-                            }
-                        }
-                    }
-
-                    // Metadata section
+                },
+                sheetContent = {
                     Column(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(start = 20.dp, end = 20.dp, bottom = 100.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                        // Audio playback section
+                        if (audioMedia.isNotEmpty()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                audioMedia.forEach { audio ->
+                                    AudioPlaybackBar(
+                                        audioUri = Uri.parse(audio.mediaStoreUri),
+                                        durationMs = audio.durationMs
+                                    )
+                                }
+                            }
+                        }
+
                         if (state.isEditing) {
-                            // Edit mode
                             EditModeContent(
                                 state = state,
                                 viewModel = viewModel,
@@ -285,11 +282,11 @@ fun MemoryDetailScreen(
                                 }
                             )
                         } else {
-                            // Read mode
                             ReadModeContent(
                                 memory = memory,
                                 tags = state.tags,
                                 dateFormat = dateFormat,
+                                moodColor = moodColor,
                                 onAddToCollection = { viewModel.showCollectionDialog() },
                                 hasExternalMedia = state.mediaFiles.any { it.source == MediaSource.EXTERNAL },
                                 onImportAll = {
@@ -300,16 +297,110 @@ fun MemoryDetailScreen(
                             )
                         }
                     }
+                },
+                sheetContentColor = Color.Unspecified
+            ) {
+                // Full-screen media behind the sheet
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(moodBgColor)
+                ) {
+                    if (visualMedia.isNotEmpty()) {
+                        PhotoHeroSection(
+                            mediaFiles = visualMedia,
+                            mood = memory.mood,
+                            onBackClick = {
+                                if (state.isEditing) viewModel.cancelEditing()
+                                else onNavigateBack()
+                            },
+                            onDeleteClick = { showDeleteDialog = true },
+                            isEditing = state.isEditing,
+                            brokenMediaIds = state.brokenMediaIds,
+                            onImportToMemly = { viewModel.importToMemly(it) },
+                            onRemoveBroken = { viewModel.removeBrokenReference(it) }
+                        )
+                    } else {
+                        // No media header
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    if (state.isEditing) viewModel.cancelEditing()
+                                    else onNavigateBack()
+                                },
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(Color.Black.copy(alpha = 0.2f), CircleShape)
+                            ) {
+                                Icon(
+                                    if (state.isEditing) Icons.Default.Close
+                                    else Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            if (state.isEditing) {
+                                IconButton(
+                                    onClick = { showDeleteDialog = true },
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                                            CircleShape
+                                        )
+                                ) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "Delete",
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
 
-                    Spacer(Modifier.height(80.dp)) // FAB clearance
+                    // FAB
+                    if (!state.isEditing) {
+                        FloatingActionButton(
+                            onClick = { viewModel.startEditing() },
+                            containerColor = fabColor,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = 16.dp, bottom = 172.dp)
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = fabContentColor)
+                        }
+                    } else {
+                        FloatingActionButton(
+                            onClick = { viewModel.saveEdits() },
+                            containerColor = fabColor,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = 16.dp, bottom = 172.dp)
+                        ) {
+                            if (state.isSaving) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = fabContentColor,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(Icons.Default.Save, contentDescription = "Save", tint = fabContentColor)
+                            }
+                        }
+                    }
+
+                    MemlyToast(
+                        message = toastMessage,
+                        onDismiss = { toastMessage = null }
+                    )
                 }
             }
-        }
-
-        MemlyToast(
-            message = toastMessage,
-            onDismiss = { toastMessage = null }
-        )
         }
     }
 
@@ -521,23 +612,27 @@ private fun PhotoHeroSection(
     onImportToMemly: (MediaFileEntity) -> Unit = {},
     onRemoveBroken: (MediaFileEntity) -> Unit = {}
 ) {
-    if (mediaFiles.isNotEmpty()) {
-        val pagerState = rememberPagerState(pageCount = { mediaFiles.size })
+    val pagerState = rememberPagerState(pageCount = { mediaFiles.size })
 
-        Box(
+    Box(modifier = Modifier.fillMaxSize()) {
+        HorizontalPager(
+            state = pagerState,
             modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(3f / 4f)
-        ) {
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize()
-            ) { page ->
-                val mediaFile = mediaFiles[page]
-                val isBroken = mediaFile.id in brokenMediaIds
+                .fillMaxSize()
+                .padding(top = 60.dp, bottom = 200.dp),
+            contentPadding = PaddingValues(horizontal = 24.dp),
+            pageSpacing = 12.dp
+        ) { page ->
+            val mediaFile = mediaFiles[page]
+            val isBroken = mediaFile.id in brokenMediaIds
 
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(20.dp)),
+                contentAlignment = Alignment.Center
+            ) {
                 if (isBroken) {
-                    // Broken reference placeholder
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -559,117 +654,94 @@ private fun PhotoHeroSection(
                 } else if (mediaFile.mediaType == MediaType.VIDEO) {
                     VideoPlayer(
                         videoUri = Uri.parse(mediaFile.mediaStoreUri),
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(20.dp))
                     )
                 } else {
                     AsyncImage(
                         model = Uri.parse(mediaFile.mediaStoreUri),
                         contentDescription = "Media ${page + 1}",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp)),
+                        contentScale = ContentScale.FillWidth
                     )
                 }
             }
+        }
 
-            // Back button — top left
+        // Back button — top left
+        IconButton(
+            onClick = onBackClick,
+            modifier = Modifier
+                .padding(12.dp)
+                .align(Alignment.TopStart)
+                .size(40.dp)
+                .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+        ) {
+            Icon(
+                if (isEditing) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = if (isEditing) "Cancel edit" else "Back",
+                tint = Color.White
+            )
+        }
+
+        // Delete button — top right (only in edit mode)
+        if (isEditing) {
             IconButton(
-                onClick = onBackClick,
+                onClick = onDeleteClick,
                 modifier = Modifier
                     .padding(12.dp)
-                    .align(Alignment.TopStart)
+                    .align(Alignment.TopEnd)
                     .size(40.dp)
-                    .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.8f), CircleShape)
             ) {
-                Icon(
-                    if (isEditing) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = if (isEditing) "Cancel edit" else "Back",
-                    tint = Color.White
-                )
+                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
             }
+        }
 
-            // Delete button — top right (only in edit mode)
-            if (isEditing) {
-                IconButton(
-                    onClick = onDeleteClick,
+        // Mood chip — top right (read mode)
+        if (!isEditing) {
+            mood?.let { m ->
+                Surface(
+                    color = m.color(),
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .padding(12.dp)
                         .align(Alignment.TopEnd)
-                        .size(40.dp)
-                        .background(MaterialTheme.colorScheme.error.copy(alpha = 0.8f), CircleShape)
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
-                }
-            }
-
-            // Mood chip — top right (read mode)
-            if (!isEditing) {
-                mood?.let { m ->
-                    Surface(
-                        color = m.color(),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier
-                            .padding(12.dp)
-                            .align(Alignment.TopEnd)
-                    ) {
-                        Text(
-                            text = m.label,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-            }
-
-            // Page indicator dots
-            if (mediaFiles.size > 1) {
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    repeat(mediaFiles.size) { index ->
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (index == pagerState.currentPage) Color.White
-                                    else Color.White.copy(alpha = 0.4f)
-                                )
-                        )
-                    }
+                    Text(
+                        text = m.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
                 }
             }
         }
-    } else {
-        // No media — compact header with back button
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-        ) {
-            IconButton(
-                onClick = onBackClick,
+
+        // Page indicator dots
+        if (mediaFiles.size > 1) {
+            Row(
                 modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 4.dp)
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 172.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Icon(
-                    if (isEditing) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = if (isEditing) "Cancel edit" else "Back"
-                )
-            }
-            if (isEditing) {
-                IconButton(
-                    onClick = onDeleteClick,
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 4.dp)
-                ) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                repeat(mediaFiles.size) { index ->
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (index == pagerState.currentPage)
+                                    mood?.color() ?: Color.White
+                                else
+                                    (mood?.color() ?: Color.White).copy(alpha = 0.4f)
+                            )
+                    )
                 }
             }
         }
@@ -681,14 +753,17 @@ private fun ReadModeContent(
     memory: MemoryEntity,
     tags: List<TagEntity>,
     dateFormat: SimpleDateFormat,
+    moodColor: Color?,
     onAddToCollection: () -> Unit,
     hasExternalMedia: Boolean = false,
     onImportAll: () -> Unit = {}
 ) {
+    val accentColor = moodColor ?: MaterialTheme.colorScheme.primary
+
     // Title
     Text(
         text = memory.title ?: "Untitled Memory",
-        style = MaterialTheme.typography.headlineSmall,
+        style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold
     )
 
@@ -699,100 +774,107 @@ private fun ReadModeContent(
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 
-    // Mood (if no image to show mood chip on)
+    // Mood chip
     memory.mood?.let { mood ->
         Surface(
             color = mood.color().copy(alpha = 0.2f),
-            shape = RoundedCornerShape(8.dp)
+            shape = RoundedCornerShape(20.dp)
         ) {
             Text(
                 text = mood.label,
                 style = MaterialTheme.typography.labelMedium,
                 color = mood.color(),
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
             )
         }
     }
 
     // Location
     memory.placeLabel?.let { place ->
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                Icons.Default.LocationOn,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text = place,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        Surface(
+            color = accentColor.copy(alpha = 0.1f),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = place,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
     }
 
     // Notes
     memory.notes?.let { notes ->
-        Text(
-            text = notes,
-            style = MaterialTheme.typography.bodyLarge
-        )
+        if (notes.isNotBlank()) {
+            Text(
+                text = notes,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 
     // Tags
     if (tags.isNotEmpty()) {
-        Text(
-            text = "Tags",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             tags.forEach { tag ->
                 Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = RoundedCornerShape(8.dp)
+                    color = accentColor.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(20.dp)
                 ) {
                     Text(
                         text = "#${tag.name}",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        color = accentColor,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
             }
         }
     }
 
-    // Import to Memly button (for external references)
+    // Import to Memly button
     if (hasExternalMedia) {
         Surface(
             shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.tertiaryContainer,
+            color = accentColor.copy(alpha = 0.12f),
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onImportAll)
         ) {
             Row(
-                modifier = Modifier.padding(12.dp),
+                modifier = Modifier.padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     Icons.Default.Save,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                    tint = accentColor,
                     modifier = Modifier.size(20.dp)
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(10.dp))
                 Text(
                     text = "Import to Memly",
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                    color = accentColor,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
@@ -801,26 +883,27 @@ private fun ReadModeContent(
     // Add to collection button
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = accentColor.copy(alpha = 0.08f),
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onAddToCollection)
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 Icons.Default.CollectionsBookmark,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = accentColor,
                 modifier = Modifier.size(20.dp)
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(10.dp))
             Text(
                 text = "Add to collection",
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
+                color = accentColor,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
