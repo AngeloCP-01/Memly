@@ -2,6 +2,7 @@ package com.example.memly.ui.onboarding
 
 import android.Manifest
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -87,6 +88,16 @@ fun OnboardingScreen(
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { /* Results don't block onboarding */ }
+
+    // On back press: go to previous page, or skip onboarding on first page
+    BackHandler {
+        if (pagerState.currentPage > 0) {
+            scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+        } else {
+            requestPermissions(permissionLauncher)
+            onComplete()
+        }
+    }
 
     Column(
         modifier = Modifier

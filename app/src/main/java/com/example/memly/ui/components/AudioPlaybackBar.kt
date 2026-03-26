@@ -96,6 +96,9 @@ fun AudioPlaybackBar(
     DisposableEffect(Unit) {
         onDispose {
             try {
+                if (mediaPlayer.isPlaying) mediaPlayer.stop()
+            } catch (_: Exception) { }
+            try {
                 mediaPlayer.release()
             } catch (_: Exception) { }
         }

@@ -4,6 +4,29 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Phase 2, Section 6: Integration & Polish
+**Date:** 2026-03-26
+
+### Fixed
+- **AudioRecorder**: MediaRecorder now properly released if `prepare()` or `start()` throws, preventing native resource leak on initialization failure.
+- **MediaStoreManager**: Orphaned MediaStore entries cleaned up on copy failure. Previously, a failed `copyTo()` left a partial entry with `IS_PENDING=1` permanently.
+- **AudioPlaybackBar**: MediaPlayer now stopped before release in `DisposableEffect` to prevent audio artifacts.
+- **VideoPlayer**: Added `Player.Listener.onPlayerError()` with fallback UI ("Video unavailable") instead of stuck loading state for unplayable URIs.
+- **CaptureViewModel**: Fixed progress indicator showing 0% for text-only memories (no media). Camera temp files in `cacheDir/camera/` now cleaned up on ViewModel clear.
+- **TimelineScreen**: Fixed potential `NoSuchElementException` crash from `imageUris.first()` on empty list — now uses `firstOrNull()` with early return.
+- **TimelineScreen**: Replaced hardcoded "Hello, Catt" greeting with "Hello there".
+
+### Improved
+- **OnboardingScreen**: Added `BackHandler` — back press navigates to previous page (or completes onboarding on first page). Prevents accidental app exit.
+- **MemoryDetailScreen**: "Memory not found" state now shows explanatory subtitle and "Go back" button instead of plain text.
+- **CaptureViewModel**: Recording error messages now include actionable hints ("Check microphone permission", "Please try again").
+- **MemoryDetailViewModel**: Import error message improved with clearer wording.
+
+### Phase 2 Complete
+All 7 sections (0–6) finished. 56 tasks across File Management, Voice Memos, Video Playback, Enhanced Capture, Onboarding, Theme & UI Polish, and Integration & Polish.
+
+---
+
 ## Ad-hoc: Place Picker Search Enhancement — Photon Geocoder + Country Filter
 **Date:** 2026-03-26
 

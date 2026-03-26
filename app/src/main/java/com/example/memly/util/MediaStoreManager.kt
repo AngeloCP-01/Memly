@@ -63,11 +63,17 @@ class MediaStoreManager(
 
             val insertUri = context.contentResolver.insert(collection, values) ?: return null
 
-            // Copy content from source to new MediaStore entry
-            context.contentResolver.openOutputStream(insertUri)?.use { output ->
-                context.contentResolver.openInputStream(sourceUri)?.use { input ->
-                    input.copyTo(output)
+            try {
+                // Copy content from source to new MediaStore entry
+                context.contentResolver.openOutputStream(insertUri)?.use { output ->
+                    context.contentResolver.openInputStream(sourceUri)?.use { input ->
+                        input.copyTo(output)
+                    }
                 }
+            } catch (e: Exception) {
+                // Copy failed — remove the orphaned MediaStore entry
+                try { context.contentResolver.delete(insertUri, null, null) } catch (_: Exception) { }
+                throw e
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

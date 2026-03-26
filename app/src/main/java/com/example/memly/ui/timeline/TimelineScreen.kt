@@ -204,7 +204,7 @@ private fun ProfileHeader(modifier: Modifier = Modifier) {
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Hello, Catt",
+                text = "Hello there",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -708,7 +708,7 @@ private fun MemoryPagerCard(
                 userScrollEnabled = false,
                 modifier = Modifier.fillMaxSize()
             ) { index ->
-                val uri = imageUris.getOrElse(index) { imageUris.first() }
+                val uri = imageUris.getOrElse(index) { imageUris.firstOrNull() ?: return@HorizontalPager }
                 val mediaFile = visualMediaFiles.getOrNull(index)
                 val isVideo = mediaFile?.mediaType == com.example.memly.data.local.entity.MediaType.VIDEO
                 val imageModel: Any = if (isVideo && mediaFile?.thumbnailPath != null) {

@@ -499,7 +499,7 @@ class MemoryDetailViewModel @Inject constructor(
                 // Reload
                 loadMemory()
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Failed to import: ${e.message}") }
+                _uiState.update { it.copy(error = "Could not import file to Memly. ${e.message}") }
             }
         }
     }

@@ -267,7 +267,19 @@ fun MemoryDetailScreen(
         }
         state.memory == null -> {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Memory not found", style = MaterialTheme.typography.bodyLarge)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Memory not found", style = MaterialTheme.typography.bodyLarge)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "This memory may have been deleted",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = onNavigateBack) {
+                        Text("Go back")
+                    }
+                }
             }
         }
         else -> {

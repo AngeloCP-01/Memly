@@ -43,15 +43,21 @@ class AudioRecorder(private val context: Context) {
                 MediaRecorder()
             }
 
-            mr.apply {
-                setAudioSource(MediaRecorder.AudioSource.MIC)
-                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                setAudioEncodingBitRate(128_000)
-                setAudioSamplingRate(44_100)
-                setOutputFile(file.absolutePath)
-                prepare()
-                start()
+            try {
+                mr.apply {
+                    setAudioSource(MediaRecorder.AudioSource.MIC)
+                    setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                    setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                    setAudioEncodingBitRate(128_000)
+                    setAudioSamplingRate(44_100)
+                    setOutputFile(file.absolutePath)
+                    prepare()
+                    start()
+                }
+            } catch (e: Exception) {
+                // Release the MediaRecorder if prepare/start fails
+                try { mr.release() } catch (_: Exception) { }
+                throw e
             }
 
             recorder = mr

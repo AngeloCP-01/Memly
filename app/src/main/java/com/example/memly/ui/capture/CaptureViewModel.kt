@@ -95,7 +95,7 @@ class CaptureViewModel @Inject constructor(
                 }
             }
         } else {
-            _uiState.update { it.copy(error = "Failed to start recording") }
+            _uiState.update { it.copy(error = "Could not start recording. Check microphone permission.") }
         }
     }
 
@@ -113,7 +113,7 @@ class CaptureViewModel @Inject constructor(
                 )
             }
         } else {
-            _uiState.update { it.copy(isRecording = false, recordingDurationMs = 0, error = "Recording failed") }
+            _uiState.update { it.copy(isRecording = false, recordingDurationMs = 0, error = "Recording failed. Please try again.") }
         }
     }
 
@@ -127,6 +127,13 @@ class CaptureViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         if (audioRecorder.isRecording) audioRecorder.cancel()
+        // Clean up orphaned camera temp files
+        try {
+            val cameraDir = File(appContext.cacheDir, "camera")
+            if (cameraDir.exists()) {
+                cameraDir.listFiles()?.forEach { it.delete() }
+            }
+        } catch (_: Exception) { }
     }
 
     fun updateTitle(title: String) {
@@ -270,6 +277,13 @@ class CaptureViewModel @Inject constructor(
             try {
                 val thumbDir = File(appContext.cacheDir, "thumbnails")
                 val totalItems = state.mediaItems.size
+
+                // Show initial progress for text-only memories (no media)
+                if (totalItems == 0) {
+                    _uiState.update {
+                        it.copy(saveProgress = SaveProgress(current = 1, total = 1, step = "Saving memory…"))
+                    }
+                }
 
                 val memoryEntity = MemoryEntity(
                     title = state.title.ifBlank { null },
