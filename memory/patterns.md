@@ -73,7 +73,10 @@
 - `sortOrder` field on `MediaFileEntity` persists media order; set via list index during save
 - `SaveProgress(current, total, step)` tracks save progress with `LinearProgressIndicator`
 - `canSave` computed property on `CaptureUiState`: requires title, notes, or media
-- Place picker: `PlacePickerDialog` composable uses osmdroid + Nominatim API for map-based location selection with search
+- Place picker: `PlacePickerDialog` composable uses osmdroid map + Photon geocoder (fuzzy search, location-biased) + Nominatim (reverse geocode only) + country filter dropdown
+- Photon API: `photon.komoot.io/api/?q=...&lat=...&lon=...&bbox=...&limit=...&lang=en` — returns GeoJSON features with `properties.countrycode` for client-side filtering
+- Debounced autocomplete: 300ms delay via `Job?.cancel()` + `scope.launch { delay(300); search() }` pattern
+- Country filter: `CountryFilter` data class with flag emoji, ISO code, center coords, bbox; list defined as top-level `COUNTRY_FILTERS` val
 
 ## File Management (MediaStore-Based — Implemented)
 

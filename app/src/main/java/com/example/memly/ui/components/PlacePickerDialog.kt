@@ -33,6 +33,8 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -61,9 +63,11 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
+
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -85,6 +89,32 @@ data class NominatimResult(
     val displayName: String,
     val lat: Double,
     val lon: Double
+)
+
+data class CountryFilter(
+    val flag: String,
+    val name: String,
+    val code: String, // ISO country code for Photon filtering
+    val centerLat: Double,
+    val centerLon: Double,
+    val bbox: String // lon1,lat1,lon2,lat2 for Photon bbox param
+)
+
+val COUNTRY_FILTERS = listOf(
+    CountryFilter("\uD83C\uDDF5\uD83C\uDDED", "Philippines", "PH", 12.8797, 121.7740, "116.95,4.59,126.60,21.12"),
+    CountryFilter("\uD83C\uDDFA\uD83C\uDDF8", "United States", "US", 39.8283, -98.5795, "-125.0,24.0,-66.0,50.0"),
+    CountryFilter("\uD83C\uDDEC\uD83C\uDDE7", "United Kingdom", "GB", 54.3781, -2.36, "-8.65,49.86,1.77,60.86"),
+    CountryFilter("\uD83C\uDDEF\uD83C\uDDF5", "Japan", "JP", 36.2048, 138.2529, "122.93,24.04,153.99,45.55"),
+    CountryFilter("\uD83C\uDDF0\uD83C\uDDF7", "South Korea", "KR", 35.9078, 127.7669, "124.60,33.10,131.87,38.63"),
+    CountryFilter("\uD83C\uDDE8\uD83C\uDDE6", "Canada", "CA", 56.1304, -106.3468, "-141.0,41.68,-52.0,83.11"),
+    CountryFilter("\uD83C\uDDE6\uD83C\uDDFA", "Australia", "AU", -25.2744, 133.7751, "113.34,-43.63,153.57,-10.67"),
+    CountryFilter("\uD83C\uDDF8\uD83C\uDDEC", "Singapore", "SG", 1.3521, 103.8198, "103.60,1.15,104.09,1.47"),
+    CountryFilter("\uD83C\uDDE9\uD83C\uDDEA", "Germany", "DE", 51.1657, 10.4515, "5.87,47.27,15.04,55.06"),
+    CountryFilter("\uD83C\uDDEE\uD83C\uDDF3", "India", "IN", 20.5937, 78.9629, "68.18,6.75,97.40,35.50"),
+    CountryFilter("\uD83C\uDDF2\uD83C\uDDFE", "Malaysia", "MY", 4.2105, 101.9758, "99.64,0.85,119.27,7.36"),
+    CountryFilter("\uD83C\uDDE6\uD83C\uDDEA", "UAE", "AE", 23.4241, 53.8478, "51.58,22.63,56.38,26.08"),
+    CountryFilter("\uD83C\uDDF3\uD83C\uDDFF", "New Zealand", "NZ", -40.9006, 174.886, "166.51,-47.29,178.52,-34.39"),
+    CountryFilter("\uD83C\uDF0D", "Worldwide", "", 0.0, 0.0, "")
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -113,6 +143,11 @@ fun PlacePickerDialog(
     val primaryColor = MaterialTheme.colorScheme.primary.toArgb()
 
     var isDetectingLocation by remember { mutableStateOf(false) }
+    var userLat by remember { mutableStateOf(initialLatitude) }
+    var userLng by remember { mutableStateOf(initialLongitude) }
+    var autocompleteJob by remember { mutableStateOf<Job?>(null) }
+    var selectedCountry by remember { mutableStateOf(COUNTRY_FILTERS.first()) } // Philippines default
+    var showCountryDropdown by remember { mutableStateOf(false) }
 
     // Configure osmdroid
     LaunchedEffect(Unit) {
@@ -140,6 +175,8 @@ fun PlacePickerDialog(
         val client = LocationServices.getFusedLocationProviderClient(context)
         client.lastLocation.addOnSuccessListener { location ->
             if (location != null) {
+                userLat = location.latitude
+                userLng = location.longitude
                 mapViewRef?.controller?.animateTo(GeoPoint(location.latitude, location.longitude))
                 mapViewRef?.controller?.setZoom(15.0)
                 isDetectingLocation = false
@@ -148,6 +185,8 @@ fun PlacePickerDialog(
                 client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, token.token)
                     .addOnSuccessListener { fresh ->
                         if (fresh != null) {
+                            userLat = fresh.latitude
+                            userLng = fresh.longitude
                             mapViewRef?.controller?.animateTo(GeoPoint(fresh.latitude, fresh.longitude))
                             mapViewRef?.controller?.setZoom(15.0)
                         }
@@ -166,22 +205,40 @@ fun PlacePickerDialog(
             searchResults = withContext(Dispatchers.IO) {
                 try {
                     val encoded = URLEncoder.encode(query, "UTF-8")
-                    val url = "https://nominatim.openstreetmap.org/search?q=$encoded&format=json&limit=5&addressdetails=0"
+                    val country = selectedCountry
+                    val biasLat = userLat ?: country.centerLat
+                    val biasLon = userLng ?: country.centerLon
+                    val bboxParam = if (country.bbox.isNotEmpty()) "&bbox=${country.bbox}" else ""
+                    val url = "https://photon.komoot.io/api/?q=$encoded&lat=$biasLat&lon=$biasLon&limit=15&lang=en$bboxParam"
                     val connection = URL(url).openConnection().apply {
                         setRequestProperty("User-Agent", context.packageName)
                         connectTimeout = 10_000
                         readTimeout = 10_000
                     }
                     val response = connection.getInputStream().use { it.bufferedReader().readText() }
-                    val array = JSONArray(response)
-                    (0 until array.length()).map { i ->
-                        val obj = array.getJSONObject(i)
+                    val root = org.json.JSONObject(response)
+                    val features = root.getJSONArray("features")
+                    val countryCode = country.code
+                    (0 until features.length()).mapNotNull { i ->
+                        val feature = features.getJSONObject(i)
+                        val props = feature.getJSONObject("properties")
+                        // Filter by country code if a specific country is selected
+                        if (countryCode.isNotEmpty()) {
+                            val resultCountryCode = props.optString("countrycode", "")
+                            if (!resultCountryCode.equals(countryCode, ignoreCase = true)) return@mapNotNull null
+                        }
+                        val coords = feature.getJSONObject("geometry").getJSONArray("coordinates")
+                        val nameParts = mutableListOf<String>()
+                        props.optString("name", "").takeIf { it.isNotEmpty() }?.let { nameParts.add(it) }
+                        props.optString("street", "").takeIf { it.isNotEmpty() }?.let { nameParts.add(it) }
+                        props.optString("city", "").takeIf { it.isNotEmpty() }?.let { nameParts.add(it) }
+                        props.optString("state", "").takeIf { it.isNotEmpty() }?.let { nameParts.add(it) }
                         NominatimResult(
-                            displayName = obj.getString("display_name"),
-                            lat = obj.getDouble("lat"),
-                            lon = obj.getDouble("lon")
+                            displayName = nameParts.joinToString(", ").ifEmpty { "Unknown location" },
+                            lat = coords.getDouble(1), // GeoJSON: [lon, lat]
+                            lon = coords.getDouble(0)
                         )
-                    }
+                    }.take(7)
                 } catch (e: Exception) {
                     emptyList()
                 }
@@ -194,7 +251,7 @@ fun PlacePickerDialog(
         scope.launch {
             selectedPlaceName = withContext(Dispatchers.IO) {
                 try {
-                    val url = "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lon&format=json&zoom=18"
+                    val url = "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lon&format=json&zoom=18&accept-language=en"
                     val connection = URL(url).openConnection().apply {
                         setRequestProperty("User-Agent", context.packageName)
                         connectTimeout = 10_000
@@ -257,8 +314,10 @@ fun PlacePickerDialog(
                     },
                     actions = {
                         if (selectedLat != null && selectedLng != null) {
+                            val lat = selectedLat ?: return@TopAppBar
+                            val lng = selectedLng ?: return@TopAppBar
                             IconButton(onClick = {
-                                onPlaceSelected(selectedLat!!, selectedLng!!, selectedPlaceName)
+                                onPlaceSelected(lat, lng, selectedPlaceName)
                             }) {
                                 Icon(Icons.Default.Check, contentDescription = "Confirm")
                             }
@@ -323,35 +382,107 @@ fun PlacePickerDialog(
                         .fillMaxWidth()
                         .align(Alignment.TopCenter)
                 ) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = { Text("Search for a place...") },
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 8.dp),
-                        singleLine = true,
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        trailingIcon = {
-                            if (isSearching) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else if (searchQuery.isNotBlank()) {
-                                IconButton(onClick = { searchPlaces(searchQuery) }) {
-                                    Icon(Icons.Default.Search, contentDescription = "Search")
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { newValue ->
+                                searchQuery = newValue
+                                autocompleteJob?.cancel()
+                                if (newValue.length >= 2) {
+                                    autocompleteJob = scope.launch {
+                                        delay(300)
+                                        searchPlaces(newValue)
+                                    }
+                                } else {
+                                    showResults = false
+                                    searchResults = emptyList()
+                                }
+                            },
+                            placeholder = { Text("Search for a place...") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                            trailingIcon = {
+                                if (isSearching) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else if (searchQuery.isNotBlank()) {
+                                    IconButton(onClick = { searchPlaces(searchQuery) }) {
+                                        Icon(Icons.Default.Search, contentDescription = "Search")
+                                    }
+                                }
+                            },
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(onSearch = { searchPlaces(searchQuery) }),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedContainerColor = MaterialTheme.colorScheme.surface
+                            )
+                        )
+
+                        Spacer(Modifier.width(6.dp))
+
+                        // Country flag dropdown
+                        Box {
+                            Surface(
+                                onClick = { showCountryDropdown = true },
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                tonalElevation = 2.dp,
+                                shadowElevation = 2.dp,
+                                modifier = Modifier.size(56.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = selectedCountry.flag,
+                                        style = MaterialTheme.typography.headlineSmall
+                                    )
                                 }
                             }
-                        },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { searchPlaces(searchQuery) }),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedContainerColor = MaterialTheme.colorScheme.surface
-                        )
-                    )
+
+                            DropdownMenu(
+                                expanded = showCountryDropdown,
+                                onDismissRequest = { showCountryDropdown = false }
+                            ) {
+                                COUNTRY_FILTERS.forEach { country ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(
+                                                    text = country.flag,
+                                                    style = MaterialTheme.typography.titleMedium
+                                                )
+                                                Spacer(Modifier.width(8.dp))
+                                                Text(
+                                                    text = country.name,
+                                                    style = MaterialTheme.typography.bodyMedium
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            selectedCountry = country
+                                            showCountryDropdown = false
+                                            // Re-trigger search with new country filter
+                                            if (searchQuery.length >= 2) {
+                                                autocompleteJob?.cancel()
+                                                autocompleteJob = scope.launch {
+                                                    searchPlaces(searchQuery)
+                                                }
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     // Search results dropdown
                     if (showResults && searchResults.isNotEmpty()) {
@@ -457,6 +588,8 @@ fun PlacePickerDialog(
                             val client = LocationServices.getFusedLocationProviderClient(context)
                             client.lastLocation.addOnSuccessListener { loc ->
                                 if (loc != null) {
+                                    userLat = loc.latitude
+                                    userLng = loc.longitude
                                     mapViewRef?.controller?.animateTo(GeoPoint(loc.latitude, loc.longitude))
                                     mapViewRef?.controller?.setZoom(16.0)
                                 }
@@ -540,9 +673,9 @@ fun PlacePickerDialog(
                     // Confirm button
                     Button(
                         onClick = {
-                            if (selectedLat != null && selectedLng != null) {
-                                onPlaceSelected(selectedLat!!, selectedLng!!, selectedPlaceName)
-                            }
+                            val lat = selectedLat ?: return@Button
+                            val lng = selectedLng ?: return@Button
+                            onPlaceSelected(lat, lng, selectedPlaceName)
                         },
                         enabled = selectedLat != null && selectedLng != null,
                         modifier = Modifier

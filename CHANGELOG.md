@@ -4,6 +4,21 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Ad-hoc: Place Picker Search Enhancement — Photon Geocoder + Country Filter
+**Date:** 2026-03-26
+
+### Changed
+- **PlacePickerDialog search**: Replaced Nominatim geocoder with Photon (`photon.komoot.io`) for place search. Photon provides fuzzy matching (handles typos and partial names), location-biased ranking (nearby results first), and better POI/business coverage.
+- **Debounced autocomplete**: Search results now appear as-you-type after 2+ characters with 300ms debounce. No longer requires pressing the Search button.
+- **Nominatim reverse geocode**: Added `accept-language=en` parameter for English place names.
+
+### Added
+- **Country filter dropdown**: Compact flag icon button (56dp) next to search bar. Defaults to Philippines 🇵🇭. Dropdown shows 13 countries (PH, US, UK, JP, KR, CA, AU, SG, DE, IN, MY, AE, NZ) plus Worldwide 🌍. Filters results via Photon `bbox` parameter (server-side bias) and `countrycode` property (client-side hard filter). Changing country re-triggers active search.
+- `CountryFilter` data class and `COUNTRY_FILTERS` list with flag emojis, ISO codes, center coordinates, and bounding boxes.
+- Location bias state (`userLat`, `userLng`) updated from GPS detection and My Location button, used to bias Photon search results toward user's current position.
+
+---
+
 ## Ad-hoc: Full-Screen Media Viewer on Memory Detail Screen
 **Date:** 2026-03-26
 

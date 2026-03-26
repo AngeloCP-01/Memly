@@ -47,8 +47,9 @@
 | 14 | Collection detail grid + Memory detail bottom sheet redesign | COMPLETE |
 | 15 | Edit screen parity + map defaults + place picker zoom controls | COMPLETE |
 | 16 | Full-screen media viewer on memory detail screen | COMPLETE |
+| 17 | Place picker: Photon geocoder + country filter dropdown | COMPLETE |
 
 ## Current Pointer
 
-- **Last completed:** Ad-hoc #16 -- Full-screen media viewer with swipe, pinch-to-zoom, video support (2026-03-26)
+- **Last completed:** Ad-hoc #17 -- Place picker search enhancement: Photon geocoder, debounced autocomplete, country filter dropdown (2026-03-26)
 - **Next:** Phase 2, Section 6 -- Map Enhancement
