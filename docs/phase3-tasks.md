@@ -18,14 +18,17 @@ Help users discover patterns in their memories through analytics, calendar views
 ```
 Section 1 (Mood Analytics)   ──┐
 Section 2 (Calendar View)     ─┤
-Section 3 (Stats Dashboard)   ─┼──> Section 7 (Integration & Polish)
-Section 4 (Gamification)      ─┤
+Section 3 (Stats Dashboard)   ─┤
+Section 4 (Gamification)      ─┼──> Section 9 (Integration & Polish)
 Section 5 (Map Heatmap)       ─┤
-Section 6 (On This Day)       ─┘
+Section 6 (On This Day)       ─┤
+Section 7 (Map Enhancement)   ─┤
+Section 8 (Data Management)   ─┘
 ```
 
-Sections 1 through 6 are mostly independent of each other and can proceed in parallel.
-Section 7 is the final integration pass and depends on all prior sections.
+Sections 1 through 8 are mostly independent of each other and can proceed in parallel.
+Section 7 (Map Enhancement) and Section 8 (Data Management) were moved from Phase 2.
+Section 9 is the final integration pass and depends on all prior sections.
 
 ---
 
@@ -39,8 +42,10 @@ Section 7 is the final integration pass and depends on all prior sections.
 | 4       | Gamification -- Streaks & Scores | 8   | Medium     | Medium |
 | 5       | Map Heatmap                    | 6     | Medium     | Medium |
 | 6       | "On This Day" Enhancement      | 5     | Medium     | Medium |
-| 7       | Integration & Polish           | 8     | Medium     | Low    |
-|         | **Total**                      | **51**|            |        |
+| 7       | Map Enhancement                | 5     | Medium     | Low    |
+| 8       | Data Management                | 10    | High       | Medium |
+| 9       | Integration & Polish           | 8     | Medium     | Low    |
+|         | **Total**                      | **66**|            |        |
 
 ---
 
@@ -188,7 +193,54 @@ Expand the basic Time Hop feature from Phase 1 into a richer "On This Day" exper
 
 ---
 
-## Section 7: Integration & Polish
+## Section 7: Map Enhancement
+
+**Status:** NOT STARTED
+
+*Moved from Phase 2.* Replace osmdroid with Google Maps SDK in the place picker for reliable map tile loading. Migrate the existing Map Screen if feasible.
+
+**Risks:**
+- Low. Google Maps SDK for Android is free (no usage charges for native mobile). Requires API key setup in Google Cloud Console.
+
+| Task | Description                                                                 | Status | Notes                                                         |
+|------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
+| 7.1  | Add Google Maps SDK dependency (`play-services-maps` + `maps-compose`)     | ⬜     | Add to version catalog and build.gradle. Requires Google Maps API key in `AndroidManifest.xml` via `local.properties`. |
+| 7.2  | Replace osmdroid MapView with Google Maps in PlacePickerDialog              | ⬜     | Use `GoogleMap` composable from `maps-compose`. Keep Nominatim for search or switch to Geocoding API. Preserve tap-to-select, search, reverse geocode, and My Location features. |
+| 7.3  | Migrate Map Screen from osmdroid to Google Maps                             | ⬜     | Replace `OsmdroidMapView` with Google Maps. Preserve mood-colored pins, pin tap preview card, auto-center on bounds, mood filter chips. |
+| 7.4  | Remove osmdroid dependency                                                  | ⬜     | Clean up osmdroid from build.gradle and version catalog once all map usage is migrated. Remove osmdroid tile cache setup. |
+| 7.5  | Verify: place picker and Map Screen display tiles, markers, and interactions correctly | ⬜ | Test on physical device with network. Confirm API key restriction works. |
+
+**Checkpoint:** All maps in the app use Google Maps SDK with reliable tile loading. Place picker and Map Screen function identically to before with improved map quality.
+
+---
+
+## Section 8: Data Management
+
+**Status:** NOT STARTED
+
+*Moved from Phase 2.* Backup, restore, and export functionality for data safety and portability.
+
+**Risks:**
+- Medium. Large backup files may be slow to write and read. Import conflict resolution requires careful handling of duplicate detection by hash. File paths in backups may not be portable across devices or reinstalls.
+
+| Task | Description                                                                 | Status | Notes                                                         |
+|------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
+| 8.1  | Create BackupRepository with export and import logic                        | ⬜     | Central class coordinating serialization and file I/O          |
+| 8.2  | JSON full backup: serialize all Room data (memories, media metadata, tags, collections) to JSON | ⬜ | Use kotlinx.serialization or Gson; write to external/shared storage |
+| 8.3  | Include media file references (MediaStore URIs + relative paths) in backup metadata | ⬜ | Store `relativePath` + `displayName` for portability; URIs for same-device restore |
+| 8.4  | JSON import: deserialize and insert into Room, handle conflicts (skip duplicates by hash) | ⬜ | Transaction-based insert; report skipped count to user        |
+| 8.5  | CSV export: export memories as CSV (date, title, notes, mood, location, tags) | ⬜   | Flat format for spreadsheet consumption; escape commas in text |
+| 8.6  | Share backup file via Android share sheet (ACTION_SEND)                     | ⬜     | Use FileProvider to share the JSON file                        |
+| 8.7  | Share CSV via share sheet                                                   | ⬜     | Same share mechanism as JSON backup                            |
+| 8.8  | Add backup/restore and export options to SettingsScreen                     | ⬜     | New section in settings with list items for each action        |
+| 8.9  | Orphan file cleanup: scan `Pictures/Memly/` for files not referenced in DB  | ⬜     | Dev/settings tool: query `Pictures/Memly/` via MediaStore, compare against DB entries, offer to delete unreferenced files. Handles cases where DB row was deleted but file deletion failed (crash, user cancelled). |
+| 8.10 | Verify: export JSON, clear data, import JSON, all memories restored         | ⬜     | Round-trip test confirming data integrity after restore. Also verify orphan cleanup correctly identifies and removes unreferenced files. |
+
+**Checkpoint:** Users can export a full JSON backup and a CSV summary. Backups can be shared via the system share sheet. Importing a backup restores all memories, skipping duplicates. Orphan cleanup removes unreferenced files from Memly's public folder. Settings screen provides access to all data management actions.
+
+---
+
+## Section 9: Integration & Polish
 
 **Status:** NOT STARTED
 
@@ -199,13 +251,13 @@ Final pass to ensure all Phase 3 features work together, perform well, and are a
 
 | Task | Description                                                                 | Status | Notes                                                         |
 |------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
-| 7.1  | End-to-end test of all analytics, calendar, and gamification features      | ⬜     | Walk through each feature with realistic data                  |
-| 7.2  | Verify streak logic across timezone changes and app restarts               | ⬜     | Change device timezone; force-stop and relaunch app            |
-| 7.3  | Performance test with large dataset (100+ memories) in charts and calendar | ⬜     | Seed database with bulk data; measure frame rate and load time |
-| 7.4  | Update navigation to include analytics entry point                         | ⬜     | Add bottom nav item or menu entry; ensure back navigation works |
-| 7.5  | Final build and smoke test on physical device                              | ⬜     | Verify all features on a real device with release build        |
-| 7.6  | Build custom CameraX in-app camera with photo/video toggle                 | ⬜     | Messenger-like UX: single camera screen with mode switch; replaces Photo/Video dialog (D082) |
-| 7.7  | Integrate CameraX camera into CaptureScreen and MemoryDetailScreen         | ⬜     | Camera button navigates to CameraX screen; result returned via savedStateHandle or nav args |
-| 7.8  | Verify: CameraX camera captures photos and videos, returns results correctly | ⬜   | Test photo capture, video recording, mode switching, back navigation |
+| 9.1  | End-to-end test of all analytics, calendar, gamification, map, and data management features | ⬜ | Walk through each feature with realistic data                  |
+| 9.2  | Verify streak logic across timezone changes and app restarts               | ⬜     | Change device timezone; force-stop and relaunch app            |
+| 9.3  | Performance test with large dataset (100+ memories) in charts and calendar | ⬜     | Seed database with bulk data; measure frame rate and load time |
+| 9.4  | Update navigation to include analytics entry point                         | ⬜     | Add bottom nav item or menu entry; ensure back navigation works |
+| 9.5  | Final build and smoke test on physical device                              | ⬜     | Verify all features on a real device with release build        |
+| 9.6  | Build custom CameraX in-app camera with photo/video toggle                 | ⬜     | Messenger-like UX: single camera screen with mode switch; replaces Photo/Video dialog (D082) |
+| 9.7  | Integrate CameraX camera into CaptureScreen and MemoryDetailScreen         | ⬜     | Camera button navigates to CameraX screen; result returned via savedStateHandle or nav args |
+| 9.8  | Verify: CameraX camera captures photos and videos, returns results correctly | ⬜   | Test photo capture, video recording, mode switching, back navigation |
 
 **Checkpoint:** All Phase 3 features are integrated, performant, and reachable from navigation. In-app camera supports photo/video toggle without system camera dialogs. App is stable with a large memory collection. Ready for Phase 4.

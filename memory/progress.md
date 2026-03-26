@@ -23,9 +23,7 @@
 | 3 | Enhanced Capture               | COMPLETE    |
 | 4 | Onboarding Flow                | COMPLETE    |
 | 5 | Theme & UI Polish              | COMPLETE    |
-| 6 | Map Enhancement                | NOT STARTED |
-| 7 | Data Management                | NOT STARTED |
-| 8 | Integration & Polish           | NOT STARTED |
+| 6 | Integration & Polish           | NOT STARTED |
 
 ## Ad-hoc
 
@@ -52,4 +50,5 @@
 ## Current Pointer
 
 - **Last completed:** Ad-hoc #17 -- Place picker search enhancement: Photon geocoder, debounced autocomplete, country filter dropdown (2026-03-26)
-- **Next:** Phase 2, Section 6 -- Map Enhancement
+- **Next:** Phase 2, Section 6 -- Integration & Polish
+- **Note:** Map Enhancement and Data Management moved from Phase 2 (Sections 6-7) to Phase 3 (Sections 7-8) on 2026-03-26

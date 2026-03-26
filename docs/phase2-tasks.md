@@ -16,17 +16,17 @@
 ```
 Section 0 (File Management) ──> ALL SECTIONS (must complete first)
 Section 1 (Voice Memos)  ──┐
-Section 2 (Video Playback)  ├──> Section 8 (Integration)
+Section 2 (Video Playback)  ├──> Section 6 (Integration)
 Section 3 (Enhanced Capture)│
 Section 4 (Onboarding)     ─┤
-Section 5 (Theme Polish)   ─┤
-Section 6 (Map Enhancement) ┤
-Section 7 (Data Management) ┘
+Section 5 (Theme Polish)   ─┘
 ```
 
 **Section 0 is a prerequisite for all other sections.** It refactors file storage from app-private to public MediaStore-based storage. Sections 1 (Voice Memos), 2 (Video), and 3 (Enhanced Capture) all depend on the new file management layer.
-Sections 1 through 7 are mostly independent and can proceed in parallel after Section 0.
-Section 8 depends on all prior sections and is the final integration pass.
+Sections 1 through 5 are mostly independent and can proceed in parallel after Section 0.
+Section 6 depends on all prior sections and is the final integration pass.
+
+**Note:** Map Enhancement and Data Management were moved to Phase 3 (Sections 7-8).
 
 ---
 
@@ -40,10 +40,8 @@ Section 8 depends on all prior sections and is the final integration pass.
 | 3       | Enhanced Capture              | 8     | Low        | Low    |
 | 4       | Onboarding Flow               | 6     | Low        | Low    |
 | 5       | Theme & UI Polish             | 8     | Low        | Low    |
-| 6       | Map Enhancement               | 5     | Medium     | Low    |
-| 7       | Data Management               | 10    | High       | Medium |
-| 8       | Integration & Polish          | 5     | Medium     | Medium |
-|         | **Total**                     | **71**|            |        |
+| 6       | Integration & Polish          | 5     | Medium     | Medium |
+|         | **Total**                     | **56**|            |        |
 
 ---
 
@@ -94,7 +92,7 @@ Refactor file storage from app-private (`filesDir/media/`) to public MediaStore-
 
 ## Section 1: Voice Memos
 
-**Status:** COMPLETE
+ 6**Status:** COMPLETE
 
 Add audio recording support so users can attach voice memos to memories during capture and play them back in the detail view.
 
@@ -211,68 +209,21 @@ Memly visual identity fully implemented in Phase 1 — soft pastel palette, Popp
 
 ---
 
-## Section 6: Map Enhancement
+## Section 6: Integration & Polish
 
 **Status:** NOT STARTED
 
-Replace osmdroid with Google Maps SDK in the place picker for reliable map tile loading. Migrate the existing Map Screen if feasible.
+Final integration testing and edge case handling across Phase 2 features (Sections 0-5: file management, voice memos, video playback, enhanced capture, onboarding, theme & UI polish).
 
 **Risks:**
-- Low. Google Maps SDK for Android is free (no usage charges for native mobile). Requires API key setup in Google Cloud Console.
+- Medium. Cross-feature interactions may surface unexpected issues (e.g., voice memo + video playback in same memory, capture flow edge cases).
 
 | Task | Description                                                                 | Status | Notes                                                         |
 |------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
-| 6.1  | Add Google Maps SDK dependency (`play-services-maps` + `maps-compose`)     | ⬜     | Add to version catalog and build.gradle. Requires Google Maps API key in `AndroidManifest.xml` via `local.properties`. |
-| 6.2  | Replace osmdroid MapView with Google Maps in PlacePickerDialog              | ⬜     | Use `GoogleMap` composable from `maps-compose`. Keep Nominatim for search or switch to Geocoding API. Preserve tap-to-select, search, reverse geocode, and My Location features. |
-| 6.3  | Migrate Map Screen from osmdroid to Google Maps                             | ⬜     | Replace `OsmdroidMapView` with Google Maps. Preserve mood-colored pins, pin tap preview card, auto-center on bounds, mood filter chips. |
-| 6.4  | Remove osmdroid dependency                                                  | ⬜     | Clean up osmdroid from build.gradle and version catalog once all map usage is migrated. Remove osmdroid tile cache setup. |
-| 6.5  | Verify: place picker and Map Screen display tiles, markers, and interactions correctly | ⬜ | Test on physical device with network. Confirm API key restriction works. |
+| 6.1  | End-to-end test of all Phase 2 features                                     | ⬜     | Walk through every new flow: voice memos, video playback, enhanced capture, onboarding |
+| 6.2  | Handle edge cases: recording interrupted, large video files, broken references | ⬜    | Graceful error messages; prevent data corruption               |
+| 6.3  | Verify voice memos, video playback, onboarding, and theme all work together  | ⬜     | Cross-feature scenarios (e.g., memory with audio + video + photos) |
+| 6.4  | Update empty states and error messages for new features                      | ⬜     | Consistent messaging style; actionable hints for the user      |
+| 6.5  | Final build and smoke test                                                   | ⬜     | Generate debug APK; test on physical device                    |
 
-**Checkpoint:** All maps in the app use Google Maps SDK with reliable tile loading. Place picker and Map Screen function identically to before with improved map quality.
-
----
-
-## Section 7: Data Management
-
-**Status:** NOT STARTED
-
-Backup, restore, and export functionality for data safety and portability.
-
-**Risks:**
-- Medium. Large backup files may be slow to write and read. Import conflict resolution requires careful handling of duplicate detection by hash. File paths in backups may not be portable across devices or reinstalls.
-
-| Task | Description                                                                 | Status | Notes                                                         |
-|------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
-| 7.1  | Create BackupRepository with export and import logic                        | ⬜     | Central class coordinating serialization and file I/O          |
-| 7.2  | JSON full backup: serialize all Room data (memories, media metadata, tags, collections) to JSON | ⬜ | Use kotlinx.serialization or Gson; write to external/shared storage |
-| 7.3  | Include media file references (MediaStore URIs + relative paths) in backup metadata | ⬜ | Store `relativePath` + `displayName` for portability; URIs for same-device restore |
-| 7.4  | JSON import: deserialize and insert into Room, handle conflicts (skip duplicates by hash) | ⬜ | Transaction-based insert; report skipped count to user        |
-| 7.5  | CSV export: export memories as CSV (date, title, notes, mood, location, tags) | ⬜   | Flat format for spreadsheet consumption; escape commas in text |
-| 7.6  | Share backup file via Android share sheet (ACTION_SEND)                     | ⬜     | Use FileProvider to share the JSON file                        |
-| 7.7  | Share CSV via share sheet                                                   | ⬜     | Same share mechanism as JSON backup                            |
-| 7.8  | Add backup/restore and export options to SettingsScreen                     | ⬜     | New section in settings with list items for each action        |
-| 7.9  | Orphan file cleanup: scan `Pictures/Memly/` for files not referenced in DB  | ⬜     | Dev/settings tool: query `Pictures/Memly/` via MediaStore, compare against DB entries, offer to delete unreferenced files. Handles cases where DB row was deleted but file deletion failed (crash, user cancelled). |
-| 7.10 | Verify: export JSON, clear data, import JSON, all memories restored         | ⬜     | Round-trip test confirming data integrity after restore. Also verify orphan cleanup correctly identifies and removes unreferenced files. |
-
-**Checkpoint:** Users can export a full JSON backup and a CSV summary. Backups can be shared via the system share sheet. Importing a backup restores all memories, skipping duplicates. Orphan cleanup removes unreferenced files from Memly's public folder. Settings screen provides access to all data management actions.
-
----
-
-## Section 8: Integration & Polish
-
-**Status:** NOT STARTED
-
-Final integration testing and edge case handling across all Phase 2 features.
-
-**Risks:**
-- Medium. Cross-feature interactions may surface unexpected issues (e.g., voice memo in backup, video playback after restore).
-
-| Task | Description                                                                 | Status | Notes                                                         |
-|------|-----------------------------------------------------------------------------|--------|---------------------------------------------------------------|
-| 8.1  | End-to-end test of all Phase 2 features                                     | ⬜     | Walk through every new flow: voice, video, capture, onboarding, map, backup |
-| 8.2  | Handle edge cases: recording interrupted, large video files, import failures | ⬜    | Graceful error messages; prevent data corruption               |
-| 8.3  | Verify voice memos, video playback, onboarding, map, backup/restore all work together | ⬜ | Cross-feature scenarios (e.g., backup includes audio files)   |
-| 8.4  | Update empty states and error messages for new features                      | ⬜     | Consistent messaging style; actionable hints for the user      |
-| 8.5  | Final build and smoke test                                                   | ⬜     | Generate debug APK; test on physical device                    |
-
-**Checkpoint:** All Phase 2 features work individually and together. Edge cases are handled gracefully. Debug APK runs on a real device without crashes.
+**Checkpoint:** All Phase 2 features (Sections 0-5) work individually and together. Edge cases are handled gracefully. Debug APK runs on a real device without crashes.
