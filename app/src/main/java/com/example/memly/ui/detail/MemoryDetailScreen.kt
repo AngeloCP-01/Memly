@@ -1,7 +1,14 @@
 package com.example.memly.ui.detail
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -68,9 +75,17 @@ import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.ui.util.fastAny
+import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -127,6 +142,7 @@ fun MemoryDetailScreen(
     var toastMessage by remember { mutableStateOf<String?>(null) }
     val dateFormat = remember { SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault()) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var fullScreenMediaIndex by remember { mutableStateOf<Int?>(null) }
 
     // Photo picker for edit mode
     val editPhotoPickerLauncher = rememberLauncherForActivityResult(
@@ -403,7 +419,8 @@ fun MemoryDetailScreen(
                             isEditing = state.isEditing,
                             brokenMediaIds = state.brokenMediaIds,
                             onImportToMemly = { viewModel.importToMemly(it) },
-                            onRemoveBroken = { viewModel.removeBrokenReference(it) }
+                            onRemoveBroken = { viewModel.removeBrokenReference(it) },
+                            onMediaClick = { index -> fullScreenMediaIndex = index }
                         )
                     } else {
                         // No media header
@@ -456,6 +473,15 @@ fun MemoryDetailScreen(
                         onDismiss = { toastMessage = null }
                     )
                 }
+            }
+
+            // Full-screen media viewer overlay
+            fullScreenMediaIndex?.let { startIndex ->
+                FullScreenMediaViewer(
+                    mediaFiles = visualMedia,
+                    startIndex = startIndex,
+                    onDismiss = { fullScreenMediaIndex = null }
+                )
             }
         }
     }
@@ -706,7 +732,8 @@ private fun PhotoHeroSection(
     isEditing: Boolean,
     brokenMediaIds: Set<Long> = emptySet(),
     onImportToMemly: (MediaFileEntity) -> Unit = {},
-    onRemoveBroken: (MediaFileEntity) -> Unit = {}
+    onRemoveBroken: (MediaFileEntity) -> Unit = {},
+    onMediaClick: (Int) -> Unit = {}
 ) {
     val pagerState = rememberPagerState(pageCount = { mediaFiles.size })
 
@@ -725,7 +752,11 @@ private fun PhotoHeroSection(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(20.dp)),
+                    .clip(RoundedCornerShape(20.dp))
+                    .then(
+                        if (!isBroken && !isEditing) Modifier.clickable { onMediaClick(page) }
+                        else Modifier
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 if (isBroken) {
@@ -748,12 +779,22 @@ private fun PhotoHeroSection(
                         }
                     }
                 } else if (mediaFile.mediaType == MediaType.VIDEO) {
-                    VideoPlayer(
-                        videoUri = Uri.parse(mediaFile.mediaStoreUri),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(20.dp))
-                    )
+                    Box {
+                        VideoPlayer(
+                            videoUri = Uri.parse(mediaFile.mediaStoreUri),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(20.dp))
+                        )
+                        // Invisible overlay to capture tap for full-screen
+                        if (!isEditing) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable { onMediaClick(page) }
+                            )
+                        }
+                    }
                 } else {
                     AsyncImage(
                         model = Uri.parse(mediaFile.mediaStoreUri),
@@ -1364,6 +1405,188 @@ private fun EditModeContent(
 }
 
 @Suppress("MissingPermission")
+@Composable
+private fun FullScreenMediaViewer(
+    mediaFiles: List<MediaFileEntity>,
+    startIndex: Int,
+    onDismiss: () -> Unit
+) {
+    BackHandler { onDismiss() }
+
+    val pagerState = rememberPagerState(
+        initialPage = startIndex,
+        pageCount = { mediaFiles.size }
+    )
+    var showControls by remember { mutableStateOf(true) }
+    var isZoomed by remember { mutableStateOf(false) }
+
+    // Reset zoom when page changes
+    LaunchedEffect(pagerState.currentPage) {
+        isZoomed = false
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+            key = { mediaFiles[it].id },
+            userScrollEnabled = !isZoomed
+        ) { page ->
+            val mediaFile = mediaFiles[page]
+
+            if (mediaFile.mediaType == MediaType.VIDEO) {
+                VideoPlayer(
+                    videoUri = Uri.parse(mediaFile.mediaStoreUri),
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                // Zoomable image
+                var scale by remember { mutableFloatStateOf(1f) }
+                var offset by remember { mutableStateOf(Offset.Zero) }
+
+                // Keep parent zoom state in sync
+                LaunchedEffect(scale) {
+                    isZoomed = scale > 1.01f
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onTap = { showControls = !showControls },
+                                onDoubleTap = {
+                                    if (scale > 1f) {
+                                        scale = 1f
+                                        offset = Offset.Zero
+                                    } else {
+                                        scale = 3f
+                                    }
+                                }
+                            )
+                        }
+                        .pointerInput(Unit) {
+                            awaitEachGesture {
+                                awaitFirstDown(requireUnconsumed = false)
+                                do {
+                                    val event = awaitPointerEvent()
+                                    val pointerCount = event.changes.size
+
+                                    if (pointerCount >= 2) {
+                                        // Pinch-to-zoom with 2+ fingers
+                                        var zoom = 1f
+                                        var pan = Offset.Zero
+                                        event.changes.fastForEach { change ->
+                                            if (change.positionChanged()) {
+                                                pan += change.positionChange()
+                                            }
+                                        }
+                                        // Calculate zoom from two primary pointers
+                                        if (event.changes.size >= 2) {
+                                            val current = event.changes[0].position - event.changes[1].position
+                                            val previous = event.changes[0].previousPosition - event.changes[1].previousPosition
+                                            val currentDist = current.getDistance()
+                                            val previousDist = previous.getDistance()
+                                            if (previousDist > 0f) {
+                                                zoom = currentDist / previousDist
+                                            }
+                                        }
+                                        val newScale = (scale * zoom).coerceIn(1f, 5f)
+                                        scale = newScale
+                                        if (newScale > 1f) {
+                                            offset = Offset(
+                                                x = offset.x + pan.x / pointerCount,
+                                                y = offset.y + pan.y / pointerCount
+                                            )
+                                        } else {
+                                            offset = Offset.Zero
+                                        }
+                                        event.changes.fastForEach { it.consume() }
+                                    } else if (scale > 1.01f) {
+                                        // Single-finger pan only when zoomed
+                                        val change = event.changes.firstOrNull()
+                                        if (change != null && change.positionChanged()) {
+                                            offset = Offset(
+                                                x = offset.x + change.positionChange().x,
+                                                y = offset.y + change.positionChange().y
+                                            )
+                                            change.consume()
+                                        }
+                                    }
+                                    // When not zoomed + single finger: don't consume → pager swipes
+                                } while (event.changes.fastAny { it.pressed })
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = Uri.parse(mediaFile.mediaStoreUri),
+                        contentDescription = "Full screen media ${page + 1}",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer(
+                                scaleX = scale,
+                                scaleY = scale,
+                                translationX = offset.x,
+                                translationY = offset.y
+                            ),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+            }
+        }
+
+        // Close button
+        AnimatedVisibility(
+            visible = showControls,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopStart)
+        ) {
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .padding(16.dp)
+                    .size(40.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Close",
+                    tint = Color.White
+                )
+            }
+        }
+
+        // Page indicator
+        if (mediaFiles.size > 1) {
+            AnimatedVisibility(
+                visible = showControls,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.align(Alignment.BottomCenter)
+            ) {
+                Text(
+                    text = "${pagerState.currentPage + 1} / ${mediaFiles.size}",
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier
+                        .padding(bottom = 32.dp)
+                        .background(
+                            Color.Black.copy(alpha = 0.5f),
+                            RoundedCornerShape(16.dp)
+                        )
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+        }
+    }
+}
+
 private fun fetchEditLocation(context: android.content.Context, viewModel: MemoryDetailViewModel) {
     val client = LocationServices.getFusedLocationProviderClient(context)
     client.lastLocation

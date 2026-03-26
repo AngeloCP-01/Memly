@@ -116,6 +116,14 @@
 - Video play icon: `Icons.Default.PlayCircle` badge on cards (timeline, carousel, search result) and slideshow
 - Videos detected via `mediaFile.mediaType == MediaType.VIDEO` in `PhotoHeroSection` — renders `VideoPlayer` instead of `AsyncImage`
 
+## Full-Screen Media Viewer
+
+- `FullScreenMediaViewer` composable in `MemoryDetailScreen.kt` — black bg, `HorizontalPager`, close button, page indicator
+- Custom `awaitEachGesture` for pinch-to-zoom: 2+ fingers → zoom+pan (consumed), 1 finger when zoomed → pan (consumed), 1 finger at 1x → pass-through to pager
+- `userScrollEnabled = !isZoomed` on pager to prevent swipe conflicts when zoomed
+- Videos in carousel need transparent tap overlay on top of `VideoPlayer` since `PlayerView` consumes touch events
+- `BackHandler` for dismiss; tap toggles controls visibility
+
 ## Timeline
 
 - `TimelineUiState` contains `allMemories`, `groups: List<TimelineGroup>`, and `timeHopMemories`

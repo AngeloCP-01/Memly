@@ -4,6 +4,19 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Ad-hoc: Full-Screen Media Viewer on Memory Detail Screen
+**Date:** 2026-03-26
+
+### Added
+- **FullScreenMediaViewer composable**: Tap any image or video in the detail screen carousel to open a full-screen viewer with black background.
+- **Swipe navigation**: HorizontalPager allows swiping between media in full-screen mode.
+- **Pinch-to-zoom**: Custom gesture handler supports pinch-to-zoom (1x–5x) and double-tap-to-zoom (toggle 1x/3x) for images.
+- **Smart gesture routing**: Single-finger swipes pass through to pager at 1x zoom; consumed for panning when zoomed in. Pager scroll disabled when zoomed.
+- **Video full-screen**: Videos play with standard ExoPlayer controls. Transparent tap overlay on carousel videos intercepts taps for full-screen entry (PlayerView consumes touch events).
+- **Controls overlay**: Tap to show/hide close button and page indicator ("1 / 3" pill). BackHandler dismisses viewer.
+
+---
+
 ## Ad-hoc: Edit Screen Parity + Map Defaults + Place Picker Zoom Controls
 **Date:** 2026-03-24
 
