@@ -4,6 +4,21 @@ All notable changes to Memly are documented here, organized by phase and section
 
 ---
 
+## Ad-hoc: Map Screen — Fix Preview Images, Zoom FABs, Map Type Switcher
+**Date:** 2026-03-26
+
+### Fixed
+- **Map preview card**: Images not showing — was using `thumbnailPath` (only set for videos). Now uses `mediaStoreUri` for photos and `thumbnailPath` for videos, matching `MemoryCard` pattern.
+- **Map zoom buttons**: Built-in osmdroid zoom buttons hidden behind bottom nav bar. Hidden via `zoomController.setVisibility(NEVER)`.
+- **Force-unwrap**: Replaced `!!` on mood filter label with safe call to prevent potential NPE.
+- **Touch target**: Preview card dismiss button enlarged from 16dp to 28dp `IconButton`.
+
+### Added
+- **Custom zoom FABs**: Zoom in (+) and zoom out (-) `SmallFloatingActionButton` at bottom-end of map.
+- **Map type switcher**: Layers icon button with dropdown menu. 4 tile sources: Standard (Mapnik), Topographic (OpenTopo), Voyager (CartoDB), Dark (CartoDB Dark Matter).
+
+---
+
 ## Phase 2, Section 6: Integration & Polish
 **Date:** 2026-03-26
 

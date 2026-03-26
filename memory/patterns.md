@@ -184,6 +184,10 @@
 - Mood filter chips overlay on top of map with `FlowRow`
 - Preview card slides in from bottom on pin tap using `AnimatedVisibility`
 - `getGeotaggedMemoriesWithDetails()` returns `Flow<List<MemoryWithDetails>>` with `@Transaction`
+- Custom zoom FABs (SmallFloatingActionButton) + built-in zoom hidden via `zoomController.setVisibility(NEVER)`
+- Map type switcher: `MapType` enum + `tileSources` map of cached `OnlineTileSourceBase` instances
+- CartoDB tile sources via `cartoDbTileSource()` helper creating anonymous `XYTileSource` subclass with `getTileURLString` override
+- 4 map types: Standard (Mapnik), Topographic (OpenTopo), Voyager (CartoDB), Dark (CartoDB Dark Matter)
 
 ## Inline Search & Filter (Timeline)
 

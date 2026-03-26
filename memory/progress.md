@@ -46,6 +46,7 @@
 | 15 | Edit screen parity + map defaults + place picker zoom controls | COMPLETE |
 | 16 | Full-screen media viewer on memory detail screen | COMPLETE |
 | 17 | Place picker: Photon geocoder + country filter dropdown | COMPLETE |
+| 18 | Map screen: fix preview images, zoom FABs, map type switcher | COMPLETE |
 
 ## Current Pointer
 

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,14 +23,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LocationOff
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -54,17 +59,46 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.example.memly.data.local.entity.MediaType
 import com.example.memly.data.local.entity.MemoryWithDetails
 import com.example.memly.data.local.entity.Mood
 import com.example.memly.ui.theme.color
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
+import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
+import org.osmdroid.util.MapTileIndex
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
 import java.io.File
+
+private enum class MapType(val label: String) {
+    STANDARD("Standard"),
+    TOPO("Topographic"),
+    CARTODB_VOYAGER("Voyager"),
+    CARTODB_DARK("Dark")
+}
+
+private fun cartoDbTileSource(name: String, baseUrl: String) = object : XYTileSource(
+    name, 0, 19, 256, ".png", arrayOf(baseUrl)
+) {
+    override fun getTileURLString(pMapTileIndex: Long): String {
+        val z = MapTileIndex.getZoom(pMapTileIndex)
+        val x = MapTileIndex.getX(pMapTileIndex)
+        val y = MapTileIndex.getY(pMapTileIndex)
+        return baseUrl + "$z/$x/$y.png"
+    }
+}
+
+private val tileSources = mapOf(
+    MapType.STANDARD to TileSourceFactory.MAPNIK,
+    MapType.TOPO to TileSourceFactory.OpenTopo,
+    MapType.CARTODB_VOYAGER to cartoDbTileSource("CartoDB-Voyager", "https://a.basemaps.cartocdn.com/rastertiles/voyager/"),
+    MapType.CARTODB_DARK to cartoDbTileSource("CartoDB-DarkMatter", "https://a.basemaps.cartocdn.com/dark_all/")
+)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -83,6 +117,10 @@ fun MapScreen(
         }
     }
 
+    var mapViewRef by remember { mutableStateOf<MapView?>(null) }
+    var selectedMapType by remember { mutableStateOf(MapType.STANDARD) }
+    var showMapTypeMenu by remember { mutableStateOf(false) }
+
     Box(modifier = Modifier.fillMaxSize()) {
         if (uiState.isLoading) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -95,7 +133,8 @@ fun MapScreen(
                 memories = uiState.memories,
                 selectedMemory = uiState.selectedMemory,
                 onMarkerClick = { memory -> viewModel.selectMemory(memory) },
-                onMapClick = { viewModel.selectMemory(null) }
+                onMapClick = { viewModel.selectMemory(null) },
+                onMapReady = { mapViewRef = it }
             )
 
             // Filter chips overlay — top
@@ -117,10 +156,63 @@ fun MapScreen(
                         .padding(32.dp)
                 ) {
                     Text(
-                        text = "No ${uiState.moodFilter!!.label.lowercase()} memories with locations",
+                        text = "No ${uiState.moodFilter?.label?.lowercase() ?: ""} memories with locations",
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.padding(16.dp)
                     )
+                }
+            }
+
+            // Map controls (layers + zoom)
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 100.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box {
+                    SmallFloatingActionButton(
+                        onClick = { showMapTypeMenu = true },
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ) {
+                        Icon(Icons.Default.Layers, contentDescription = "Map type")
+                    }
+                    DropdownMenu(
+                        expanded = showMapTypeMenu,
+                        onDismissRequest = { showMapTypeMenu = false }
+                    ) {
+                        MapType.entries.forEach { type ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = type.label,
+                                        fontWeight = if (type == selectedMapType) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                },
+                                onClick = {
+                                    selectedMapType = type
+                                    mapViewRef?.setTileSource(tileSources[type])
+                                    mapViewRef?.invalidate()
+                                    showMapTypeMenu = false
+                                }
+                            )
+                        }
+                    }
+                }
+                SmallFloatingActionButton(
+                    onClick = { mapViewRef?.controller?.zoomIn() },
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Zoom in")
+                }
+                SmallFloatingActionButton(
+                    onClick = { mapViewRef?.controller?.zoomOut() },
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ) {
+                    Icon(Icons.Default.Remove, contentDescription = "Zoom out")
                 }
             }
 
@@ -150,7 +242,8 @@ private fun OsmdroidMapView(
     memories: List<MemoryWithDetails>,
     selectedMemory: MemoryWithDetails?,
     onMarkerClick: (MemoryWithDetails) -> Unit,
-    onMapClick: () -> Unit
+    onMapClick: () -> Unit,
+    onMapReady: (MapView) -> Unit = {}
 ) {
     val context = LocalContext.current
     var hasCentered by remember { mutableStateOf(false) }
@@ -164,9 +257,10 @@ private fun OsmdroidMapView(
         MapView(context).apply {
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
+            zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
             controller.setZoom(6.0)
             controller.setCenter(GeoPoint(12.8797, 121.7740))
-        }
+        }.also { onMapReady(it) }
     }
 
     DisposableEffect(Unit) {
@@ -332,7 +426,12 @@ private fun MemoryMapPreviewCard(
     modifier: Modifier = Modifier
 ) {
     val memory = memoryWithDetails.memory
-    val thumbnail = memoryWithDetails.mediaFiles.firstOrNull { it.mediaType != com.example.memly.data.local.entity.MediaType.AUDIO }?.thumbnailPath
+    val visualMedia = memoryWithDetails.mediaFiles.firstOrNull { it.mediaType != MediaType.AUDIO }
+    val thumbnail = if (visualMedia?.mediaType == MediaType.VIDEO && visualMedia.thumbnailPath != null) {
+        visualMedia.thumbnailPath
+    } else {
+        visualMedia?.mediaStoreUri
+    }
 
     Surface(
         shape = RoundedCornerShape(12.dp),
@@ -353,8 +452,13 @@ private fun MemoryMapPreviewCard(
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     if (thumbnail != null) {
+                        val imageModel: Any = if (visualMedia?.mediaType == MediaType.VIDEO) {
+                            File(thumbnail)
+                        } else {
+                            android.net.Uri.parse(thumbnail)
+                        }
                         AsyncImage(
-                            model = File(thumbnail),
+                            model = imageModel,
                             contentDescription = memory.title ?: "Memory",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -390,16 +494,19 @@ private fun MemoryMapPreviewCard(
             }
 
             // Small dismiss X
-            Icon(
-                Icons.Default.Close,
-                contentDescription = "Dismiss",
+            IconButton(
+                onClick = onDismiss,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(4.dp)
-                    .size(16.dp)
-                    .clickable(onClick = onDismiss),
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
+                    .size(28.dp)
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Dismiss",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
         }
     }
 }
