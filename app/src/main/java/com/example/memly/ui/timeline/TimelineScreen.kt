@@ -204,7 +204,7 @@ private fun ProfileHeader(modifier: Modifier = Modifier) {
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Hello there",
+                text = "Hello Cattleya, My Catt",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )

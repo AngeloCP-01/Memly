@@ -19,7 +19,26 @@
       "Bash(git commit:*)",
       "Bash(./gradlew assembleDebug 2>&1 | tail -30)",
       "Bash(./gradlew compileDebugKotlin 2>&1 | tail -10)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(./gradlew assembleDebug 2>&1 | tail -20)",
+      "Bash(./gradlew lintDebug 2>&1 | tail -30)",
+      "Bash(./gradlew lintDebug 2>&1 | grep -E \"\\(errors|warnings|BUILD\\)\" | tail -5)",
+      "Bash(./gradlew assembleDebug 2>&1 | tail -5)",
+      "Bash(find /Users/angelito/AndroidStudioProjects/Memly/app/src/main/java/com/example/memly/ui/components -type f -name *.kt)",
+      "Bash(find /Users/angelito/AndroidStudioProjects/Memly/app/src/main/java/com/example/memly/data/local/entity -name *.kt)",
+      "Bash(grep:*)",
+      "Bash(./gradlew :app:compileDebugKotlin)",
+      "Bash(./gradlew assembleDebug)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs",
+      "Bash(cp /Users/angelito/AndroidStudioProjects/Memly/memory/progress.md /Users/angelito/.claude/projects/-Users-angelito-AndroidStudioProjects-Memly/memory/progress.md)",
+      "Bash(cp /Users/angelito/AndroidStudioProjects/Memly/memory/patterns.md /Users/angelito/.claude/projects/-Users-angelito-AndroidStudioProjects-Memly/memory/patterns.md)",
+      "Bash(cp /Users/angelito/AndroidStudioProjects/Memly/memory/decisions.md /Users/angelito/.claude/projects/-Users-angelito-AndroidStudioProjects-Memly/memory/decisions.md)",
+      "mcp__serena__find_file",
+      "Bash(./gradlew compileDebugKotlin)",
+      "Bash(git status:*)",
+      "mcp__serena__search_for_pattern"
     ]
   }
 }
